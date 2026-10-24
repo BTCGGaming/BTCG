@@ -307,7 +307,8 @@ body:not(.lobby-open) #mainLobby{display:none}
 #gameScreen[lang="en"] #battleStateBar{height:auto!important;min-height:42px;flex:0 0 auto!important}
 #gameScreen[lang="en"] .energy-label{min-width:0;white-space:normal;overflow-wrap:break-word;line-height:1.2}
 .mode-setup-actions{display:flex;justify-content:flex-end!important}.mode-setup-actions #startSelectedMode{margin-left:auto!important;min-width:165px}
-.btcg-detail-audit{display:grid;gap:5px;padding:10px;margin-top:8px;border:1px solid #6e7781;border-radius:10px;font-size:12px;overflow-wrap:anywhere}.btcg-audit-warning{color:#ffcf70;font-weight:700}</style><style>
+.btcg-detail-audit{display:grid;gap:5px;padding:10px;margin-top:8px;border:1px solid #6e7781;border-radius:10px;font-size:12px;overflow-wrap:anywhere}.btcg-audit-warning{color:#ffcf70;font-weight:700}.player-stat-source-fold>summary{cursor:pointer;list-style:revert;font-weight:700;color:#f2d38c;outline-offset:3px}.player-stat-source-fold>summary::marker{color:#f2d38c}.player-stat-source-fold:not([open]){padding-top:9px;padding-bottom:9px}.player-stat-source-fold[open]>summary{padding-bottom:7px;border-bottom:1px solid #42536b;margin-bottom:8px}.battle-roll-current-stats .player-stat-source-fold{max-width:100%}
+</style><style>
 .ai-event.inspectable{cursor:pointer;border:1px solid #d7bf79;box-shadow:inset 0 0 0 1px #d7bf7930;transition:background .15s, transform .15s}
 .ai-event.inspectable:hover,.ai-event.inspectable:focus-visible{background:#29534c;outline:2px solid #f4bf60;outline-offset:2px}
 .history-card{display:block;width:100%;text-align:left;background:transparent;border:0;border-bottom:1px solid #29374a;border-radius:0;padding:7px 3px;font-size:12px;line-height:1.65;color:#e9efff;white-space:normal}
@@ -2710,18 +2711,18 @@ function playerStatSourceRows(side,index){
  }
  return rows;
 }
-function playerStatsHTML(side,index){
+function playerStatsHTML(side,index,collapsible=false){
  const p=engine.player(side,index),rows=playerStatSourceRows(side,index),keys=['off','def'];
  let html='<p class="small">'+tr('原始數值 → 目前數值','Base → Current')+'</p><div class="player-stat-comparison">'+keys.map(key=>{const current=engine.stat(side,index,key);return '<div><b>'+key.toUpperCase()+'</b><span class="stat-original">'+p[key]+'</span><span class="stat-arrow">→</span><strong class="'+(current>p[key]?'statup':current<p[key]?'statdown':'')+'">'+current+'</strong></div>';}).join('')+'</div>';
  const changed=keys.filter(key=>engine.stat(side,index,key)!==p[key]);if(!changed.length)return html;
- html+='<div class="player-stat-source"><b>'+tr('能力值變化來源','Stat change sources')+'</b>';
+ html+=(collapsible?'<details class="player-stat-source player-stat-source-fold"><summary>'+tr('能力值變化來源','Stat change sources')+'</summary>':'<div class="player-stat-source"><b>'+tr('能力值變化來源','Stat change sources')+'</b>');
  for(const key of changed){const all=rows.filter(r=>r.key===key),delta=engine.stat(side,index,key)-p[key],known=all.reduce((sum,r)=>sum+r.value,0),remaining=delta-known;
   html+='<div class="player-stat-source-group"><strong>'+key.toUpperCase()+' '+(delta>0?'+':'')+delta+'</strong>';
   for(const r of all)html+='<div class="player-stat-source-row"><span>'+esc(r.label)+'</span><b class="'+(r.value<0?'statdown':'statup')+'">'+(r.value>0?'+':'')+r.value+'</b></div>';
   if(remaining!==0)html+='<div class="player-stat-source-row"><span>'+tr('其他被動、技能或狀態修正（來源尚未細分）','Other passives, skills or state modifiers (source not yet itemized)')+'</span><b class="'+(remaining<0?'statdown':'statup')+'">'+(remaining>0?'+':'')+remaining+'</b></div>';
   html+='</div>';
  }
- return html+'</div>';
+ return html+(collapsible?'</details>':'</div>');
 }
 
 function inspectPlayer(side,index){const s=engine.s,canUse=inGame&&s&&(controller==='manual'||side===0),effects=inGame&&s?playerEffectEntries(side,index):[];openModal('<div class="modalgrid">'+playerCardHTML(index,inGame?side:null)+'<div>'+skillsHTML(index,canUse?{side}:null,inGame?side:null)+(inGame&&s?'<h3>'+tr('目前能力與效果','Current Stats & Effects')+'</h3>'+playerStatsHTML(side,index)+'<div class="player-effect-tags">'+(effects.map(e=>'<button type="button" id="playerEffect-'+e.ownerSide+'-'+esc(e.key)+'">'+esc(e.name)+'</button>').join('')|| (['off','def'].some(k=>engine.stat(side,index,k)!==engine.player(side,index)[k])?'':'<span class="small">'+tr('無額外效果','No additional effects')+'</span>'))+'</div>':'')+'</div></div>');effects.forEach(e=>bind('playerEffect-'+e.ownerSide+'-'+e.key,()=>showActiveEffect(e.ownerSide,e.key)));if(canUse){const id=s.id,revision=s.revision;skillsOf(engine.player(side,index)).forEach((a,i)=>{if(engine.skillReason(side,index,a.id))return;bind(i?'rookieUseSkill-'+i:'rookieUseSkill',()=>{if(engine.s.id!==id||engine.s.revision!==revision)return;closeModal();beginPlayerSkill(side,index,a.id);});});}}
@@ -4537,7 +4538,7 @@ function rollEffectHintsHTML(entry,side,index,hints=rollEffectHints(entry,side,i
   return '<span class="roll-effect-hint '+skin+'" data-hint-type="'+h.type+'" title="'+esc((h.scope?h.scope+' · ':'')+label)+'">'+scope+content+'</span>';
  }).join('')+'</span>';
 }
-function battleRollPlayerHTML(side,index){const applied=(engine.s.roll?.kind==='shot'?engine.s.roll.appliedDiceEffects||[]:[]).filter(e=>e.side===side&&e.index===index).map(e=>({key:'applied-'+e.name[1],ownerSide:e.side,name:tr(...e.name),rollHints:[e.dice?{type:'dice',value:e.dice,scope:tr('本次出手','This shot')}:{type:'face',value:e.face,valid:e.valid,scope:tr('本次出手','This shot')}] }));const entries=playerEffectEntries(side,index).map(e=>({...e,rollHints:currentRollEffectHints(e,side,index)})).filter(e=>e.rollHints.length).concat(applied);return '<section class="battle-roll-player"><h3 class="battle-roll-team">'+esc(sideName(side))+'</h3>'+playerCardHTML(index,side)+'<div class="battle-roll-current-stats">'+playerStatsHTML(side,index)+'</div><div class="battle-roll-effects">'+(entries.map(e=>'<button type="button" '+(e.key.startsWith('applied-')?'disabled title="'+esc(tr('本次擲骰已套用','Applied to this roll'))+'"':'data-roll-effect-side="'+e.ownerSide+'" data-roll-effect="'+esc(e.key)+'"')+'><span class="roll-effect-name">'+esc(e.name)+'</span>'+rollEffectHintsHTML(e,side,index,e.rollHints)+'</button>').join('')||'<span class="small">'+tr('無影響本次判定的額外效果','No additional effects on this roll')+'</span>')+'</div></section>';}
+function battleRollPlayerHTML(side,index){const applied=(engine.s.roll?.kind==='shot'?engine.s.roll.appliedDiceEffects||[]:[]).filter(e=>e.side===side&&e.index===index).map(e=>({key:'applied-'+e.name[1],ownerSide:e.side,name:tr(...e.name),rollHints:[e.dice?{type:'dice',value:e.dice,scope:tr('本次出手','This shot')}:{type:'face',value:e.face,valid:e.valid,scope:tr('本次出手','This shot')}] }));const entries=playerEffectEntries(side,index).map(e=>({...e,rollHints:currentRollEffectHints(e,side,index)})).filter(e=>e.rollHints.length).concat(applied);return '<section class="battle-roll-player"><h3 class="battle-roll-team">'+esc(sideName(side))+'</h3>'+playerCardHTML(index,side)+'<div class="battle-roll-current-stats">'+playerStatsHTML(side,index,true)+'</div><div class="battle-roll-effects">'+(entries.map(e=>'<button type="button" '+(e.key.startsWith('applied-')?'disabled title="'+esc(tr('本次擲骰已套用','Applied to this roll'))+'"':'data-roll-effect-side="'+e.ownerSide+'" data-roll-effect="'+esc(e.key)+'"')+'><span class="roll-effect-name">'+esc(e.name)+'</span>'+rollEffectHintsHTML(e,side,index,e.rollHints)+'</button>').join('')||'<span class="small">'+tr('無影響本次判定的額外效果','No additional effects on this roll')+'</span>')+'</div></section>';}
 function renderRollEntryNotice(r){
  const s=engine.s;
  if(guidedLesson||['tipoff','rebound'].includes(r.kind)||acknowledgedRollEntries.has(r))return false;
