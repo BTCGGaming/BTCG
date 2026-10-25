@@ -4216,7 +4216,7 @@ $('menuText').addEventListener('click',e=>{
  else if(el=find('action-series')){actionCatalogSeries=el.dataset.rookieActionSeries==='first'?'first':'starter';}
  else if(el=find('action-category')){actionCatalogSide=null;actionCatalogCategory=el.dataset.rookieActionCategory==='tactic'?'戰術':el.dataset.rookieActionCategory==='item'?'道具':null;}
  else if(el=find('setup')){editingSetup=Number(el.dataset.rookieSetup);editingSlot=null;deckPicker=null;}
- else if(el=find('series')){rosterCatalogSeries=['champion','first'].includes(el.dataset.rookieSeries)?el.dataset.rookieSeries:'starter';rosterTeam=null;rosterPlayer=null;}
+ else if(el=find('series')){rosterCatalogSeries=['champion','finals','first'].includes(el.dataset.rookieSeries)?el.dataset.rookieSeries:'starter';rosterTeam=null;rosterPlayer=null;}
  else if(el=find('team')){rosterTeam=Number(el.dataset.rookieTeam);rosterPlayer=null;}
  else if(el=find('detail'))rosterPlayer=Number(el.dataset.rookieDetail);
  else if(el=find('back')){if(rosterPlayer!==null)rosterPlayer=null;else rosterTeam=null;}
