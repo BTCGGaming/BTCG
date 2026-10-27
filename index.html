@@ -1544,7 +1544,7 @@ class RulesTestEngine {
  clearPossessionEffects(){if(this.s.ny){this.s.ny.grip=null;this.s.ny.bridgeShot=[0,0];this.s.ny.bridgeBlock=[0,0];this.s.ny.bridgeUsed=[Array(5).fill(false),Array(5).fill(false)];this.s.ny.bondsShot=null;}this.s.abensInsidePenalty=[false,false];this.s.newTactics=[this.freshTacticProgress(),this.freshTacticProgress()];this.s.pendingPass=null;this.s.smallBallPass=[Array(5).fill(false),Array(5).fill(false)];this.s.helpDefense=[Array(5).fill(null),Array(5).fill(null)];this.s.pickRollOff=[Array(5).fill(false),Array(5).fill(false)];this.s.scoringMachine=[Array(5).fill(null),Array(5).fill(null)];this.s.horns=[Array(5).fill(false),Array(5).fill(false)];this.s.play23=[Array(5).fill(false),Array(5).fill(false)];this.s.passCounts=[0,0];this.s.heatCheck=[Array(5).fill(false),Array(5).fill(false)];this.s.fullRejection=[Array(5).fill(false),Array(5).fill(false)];this.s.smooth=[Array(5).fill(null),Array(5).fill(null)];this.s.jokerOff=[Array(5).fill(0),Array(5).fill(0)];this.s.power=[Array.from({length:5},()=>({off:0,def:0})),Array.from({length:5},()=>({off:0,def:0}))];this.s.dime=[Array(5).fill(false),Array(5).fill(false)];this.s.debuff=[Array(5).fill(0),Array(5).fill(0)];this.s.nextShots=this.s.nextShots.map(effects=>effects.filter(e=>e.persist));this.s.boo=[0,0];this.s.traps=[Array(5).fill(false),Array(5).fill(false)];this.s.passTax=[0,0];this.s.noNormal=[Array(5).fill(false),Array(5).fill(false)];}
  passBallCore(side,to){const s=this.s,from=s.holder;if(s.ny?.grip?.side===side&&s.ny.grip.index===from)s.ny.grip=null;if(s.abensPassDiscount?.[side])s.abensPassDiscount[side]=false;s.passCounts[side]++;s.smallBallPass[side][from]=false;s.pickRollOff[side][from]=false;if(from===0&&hasPassive(this.player(side,to),'pick-roll-specialist')){s.pickRollOff[side][to]=true;this.log('expansionEffect',{side,index:to,skill:'pick-roll-specialist',detail:tr('接到PG傳球：下次出手OFF +100','Received a PG pass: next shot OFF +100'),targets:[{side,index:to}]});}s.scoringMachine[side][from]=null;if(hasPassive(this.player(side,to),'scoring-machine')){s.scoringMachine[side][to]={order:++s.effectSerial};this.log('scoringCatch',{side,index:to,from,targets:[{side,index:to}]});}s.play23[side][from]=false;const aura=this.activeTactic(side,'off');if(aura?.id==='horns'&&((from===0&&[3,4].includes(to))||([3,4].includes(from)&&to===0))&&!s.horns[side][to]){s.horns[side][to]=true;this.log('tacticPass',{side,id:aura.id,from,to,targets:[{side,index:to,detail:'OFF +100'}]});}s.dime[side][from]=false;s.jokerOff[side][from]=0;if(hasPassive(this.player(side,from),'the-joker')){s.jokerOff[side][to]=50;this.log('jokerPass',{side,index:from,to,targets:[{side,index:to}]});}s.noNormal[side][from]=false;s.holder=to;s.defender=to;if(aura?.id==='number-23'&&to===this.tacticLeaderFor(side,'off',side,'off')){s.play23[side][to]=true;this.log('tacticPass',{side,id:aura.id,from,to,targets:[{side,index:to,detail:'Shot Dice +1'}]});}s.assist={side,from,to};s.skipped[side]=0;return from;}
  declareShot(side,kind,skillDice=0,extraFaces=false,flags={}){const s=this.s,bypass=s.burst===2;if(kind==='paint'&&s.abensInsidePenalty?.[side]){skillDice-=1;s.abensInsidePenalty[side]=false;this.log('expansionEffect',{side:1-side,index:s.defender,skill:'workhorse',detail:tr('對手禁區出手骰數−1','Opposing Inside shot Dice −1'),targets:[{side,index:s.holder}]});}this.applyBoxDefense();this.applyInfiniteSwitch();this.applyCongoAirspace(kind);s.skipped[side]=0;s.shot={side,player:s.holder,defender:s.defender,kind,bonus:0,skillDice,extraFaces,faceOrder:++s.effectSerial,recorded:false,...flags};s.burst=0;this.log('shotDeclared',{side,index:s.holder,skill:s.shot.skillId||null,skillSourceIndex:s.shot.skillSourceIndex??s.holder,kind,bypass});if(this.beginPuppetBlock(bypass))return;if(bypass)this.resolveShot();else{s.turn=1-side;s.phase='shotresponse';}}
- resolveShot(){const s=this.s;this.applyInfiniteSwitch();s.shot.defender=s.defender;if(s.shot.autoDunk&&this.diff()>0){const side=s.offense,index=s.holder;this.recordShot(true);this.log('autoDunk',{side,index,points:2});this.finishMadeShot('skillDunk');return;}const c=this.shotCheck(s.shot.kind,s.shot.bonus);const activeDiceEffects=[];if(s.shot.kind==='three'&&s.ny?.bridgeShot[s.offense]>0)activeDiceEffects.push({side:s.offense,index:this.roster(s.offense).findIndex(p=>skillsOf(p).some(a=>a.id==='competitive-spirit')),name:['爭強好勝','Competitive Spirit'],dice:+1});if(s.shot.kind==='three'&&s.ny?.bridgeBlock[s.offense]>0)activeDiceEffects.push({side:1-s.offense,index:this.roster(1-s.offense).findIndex(p=>skillsOf(p).some(a=>a.id==='competitive-spirit')),name:['爭強好勝','Competitive Spirit'],face:4,valid:false});if(s.ny?.bondsShot&&s.ny.bondsShot.shooterSide===s.offense)activeDiceEffects.push({side:s.ny.bondsShot.side,index:this.roster(s.ny.bondsShot.side).findIndex(p=>skillsOf(p).some(a=>a.id==='defensive-anchor')),name:['軸心骨幹','Defensive Anchor'],dice:-1});if(s.shot.bonus>0)activeDiceEffects.push({side:s.offense,index:s.holder,name:['封阻失敗','Failed Block'],dice:s.shot.bonus,origin:'block-fail'});if(s.shot.kind==='three'){if(s.ny?.bridgeShot[s.offense]>0)s.ny.bridgeShot[s.offense]--;if(s.ny?.bridgeBlock[s.offense]>0)s.ny.bridgeBlock[s.offense]--;if(s.ny?.bondsBuff[s.offense]?.active)s.ny.bondsBuff[s.offense].active=false;}this.beginRoll('shot',s.offense,c.dice,c.target,c.faces);s.roll.appliedDiceEffects=activeDiceEffects.filter(e=>e.index>=0);if(s.ny?.bondsShot){s.roll.nyBonds=s.ny.bondsShot;s.ny.bondsShot=null;}if(c.firstFaces)this.s.roll.firstFaces=c.firstFaces.slice();}
+ resolveShot(){const s=this.s;this.applyInfiniteSwitch();s.shot.defender=s.defender;if(s.shot.autoDunk&&this.diff()>0){const side=s.offense,index=s.holder;this.recordShot(true);this.log('autoDunk',{side,index,points:2});this.finishMadeShot('skillDunk');return;}const c=this.shotCheck(s.shot.kind,s.shot.bonus);const activeDiceEffects=[];if(s.shot.kind==='three'&&s.ny?.bridgeShot[s.offense]>0)activeDiceEffects.push({side:s.offense,index:this.roster(s.offense).findIndex(p=>skillsOf(p).some(a=>a.id==='competitive-spirit')),name:['爭強好勝','Competitive Spirit'],dice:+1});if(s.shot.kind==='three'&&s.ny?.bridgeBlock[s.offense]>0)activeDiceEffects.push({side:1-s.offense,index:this.roster(1-s.offense).findIndex(p=>skillsOf(p).some(a=>a.id==='competitive-spirit')),name:['爭強好勝','Competitive Spirit'],face:4,valid:false});if(s.ny?.bondsShot&&s.ny.bondsShot.shooterSide===s.offense)activeDiceEffects.push({side:s.ny.bondsShot.side,index:this.roster(s.ny.bondsShot.side).findIndex(p=>skillsOf(p).some(a=>a.id==='defensive-anchor')),name:['軸心骨幹','Defensive Anchor'],dice:-1});if(s.shot.kind==='three'){if(s.ny?.bridgeShot[s.offense]>0)s.ny.bridgeShot[s.offense]--;if(s.ny?.bridgeBlock[s.offense]>0)s.ny.bridgeBlock[s.offense]--;if(s.ny?.bondsBuff[s.offense]?.active)s.ny.bondsBuff[s.offense].active=false;}this.beginRoll('shot',s.offense,c.dice,c.target,c.faces);s.roll.appliedDiceEffects=activeDiceEffects.filter(e=>e.index>=0);if(s.ny?.bondsShot){s.roll.nyBonds=s.ny.bondsShot;s.ny.bondsShot=null;}if(c.firstFaces)this.s.roll.firstFaces=c.firstFaces.slice();}
  skillReason(side,index,skillId){const s=this.s,a=this.skill(side,index,skillId);if(!s||s.finished||!a)return 'unavailable';if(!['action','shotresponse'].includes(s.phase)||s.turn!==side)return 'turn';if(a.side!=='both'&&((a.side==='off')!==(s.offense===side)))return 'side';if(a.side==='off'&&s.phase!=='action')return 'turn';if(a.id==='defensive-anchor'&&(!s.shot||s.phase!=='shotresponse'))return 'turn';if(a.id==='relentless-grip'&&s.phase!=='action')return 'turn';if(a.id==='competitive-spirit'&&side!==s.offense&&s.phase!=='action')return 'turn';if(a.id==='competitive-spirit'&&s.ny?.bridgeUsed?.[side]?.[index])return 'duplicate';if(a.id==='push-through-fatigue'&&s.phase!=='action')return 'turn';if(a.side==='off'&&a.immediate!==false&&s.holder!==index)return 'ball';if(side===s.offense&&s.noNormal[side][index])return 'handsLocked';if(a.id==='lockdown'&&index!==s.defender)return 'mainDefender';if(a.id==='lockdown'&&s.phase==='shotresponse'&&!this.canBlock(true))return 'cannotBlock';if(a.id==='small-ball-facilitator'&&s.smallBallPass[side].every((v,i)=>i===index||v))return 'duplicate';if(s.energy[side]<(a.id==='born-dunker'&&s.btcgDunkerDiscount?.[side]?.[index]?a.cost-1:a.cost))return 'energy';if(a.id==='heat-check'&&s.heatCheck[side][index]||a.id==='full-rejection'&&s.fullRejection[side][index])return 'duplicate';return '';}
  useSkill(action){const s=this.s,{side,index,to,skillId}=action;if(this.skillReason(side,index,skillId))return false;const a=this.skill(side,index,skillId);if(['dime','small-ball-facilitator','offense-facilitator'].includes(a.id)&&(!Number.isInteger(to)||to<0||to>=5||to===index)||a.id==='handle-wizardry'&&(!Number.isInteger(to)||to<0||to>=5)||a.id==='small-ball-facilitator'&&s.smallBallPass[side][to]||a.id==='push-through-fatigue'&&(!Number.isInteger(to)||to<0||to>4))return false;const reaction=s.phase==='shotresponse',targets=a.id==='handle-wizardry'?[{side:1-side,index:to,detail:'DEF −100'}]:['dime','small-ball-facilitator','offense-facilitator','push-through-fatigue'].includes(a.id)?[{side,index:to}]:['rough','help-defense','relentless-grip'].includes(a.id)?[{side:s.offense,index:s.holder}]:a.id==='lockdown'?[{side,index},{side:s.offense,index:s.holder}]:[{side,index}];s.energy[side]-=a.cost;s.skipped[side]=0;this.log('skillUsed',{side,index,skill:a.id,to,cost:a.cost,targets,ballHandler:{side:s.offense,index:s.holder}});
   if(['rising-star','scorer','lefty-hook','flash-step','catching-fire','muscle-memory','young-lord-arrives','control-the-game-three','control-the-game-paint','wind-sprint','born-dunker','three-d-basics'].includes(a.id)){const kind=a.id==='lefty-hook'?'mid':['flash-step','young-lord-arrives','control-the-game-paint','wind-sprint','born-dunker'].includes(a.id)?'paint':'three';this.declareShot(side,kind,['lefty-hook','rising-star'].includes(a.id)?1:0,false,{skillId:a.id,...(a.id==='flash-step'?{noCards:true}:a.id==='muscle-memory'?{energyOff:100}:{})});}
@@ -1662,7 +1662,7 @@ class RulesTestEngine {
   }
   if(r.kind==='block'){
    if(r.success){const def=1-s.offense,index=s.defender;s.stats[def][index].blk++;s.stats[def][index].reb++;this.recordShot(false);this.consumePossession(def,index,'blocked');}
-   else{s.shot.bonus++;this.log('blockFail');this.resolveShot();}return true;
+   else{s.shot.blockFoul=true;this.log('blockFail',{side:1-s.offense,index:s.defender,targetSide:s.offense,targetIndex:s.holder});this.resolveShot();}return true;
   }
   if(r.kind==='shot'){if(r.nyBonds&&!r.success)s.ny.bondsBuff[r.nyBonds.side]={active:true,awaiting:true};this.recordShot(r.success);if(r.success){this.log('made',{side:s.offense,index:s.shot.player,kind:s.shot.kind,points:SHOTS[s.shot.kind].points});this.finishMadeShot();}
    else if(s.shot.skillId==='new-hope'){this.log('hopeMiss',{side:s.offense,index:s.shot.player,targets:[{side:s.offense,index:s.shot.player}]});this.beginFreeThrows(3,'new-hope','missedFreeThrows');}
@@ -1890,7 +1890,7 @@ class RulesTestEngine {
    if(defAura?.id==='closeout-defense'&&['three','paint'].includes(shotKind))record(def,'tactic','closeout-defense',shotKind==='three'?-1:1,'shot dice');
    if(attackAura?.id==='wing-focus'&&[2,3].includes(s.holder))record(off,'tactic','wing-focus',1,'shot dice');
    if(attackAura?.id==='run-and-gun'&&s.passCounts[off]<=1)record(off,'tactic','run-and-gun',1,'shot dice');
-   if(s.shot?.bonus)record(off,'rule','failed-block',s.shot.bonus,'shot dice');
+   
    if(s.ny?.bondsShot?.shooterSide===off)record(def,'skill','defensive-anchor',-1,'shot dice');
    if(shotKind==='three'&&s.ny?.bridgeShot[off]>0)record(off,'skill','competitive-spirit',1,'shot dice');
   }else if(kind==='rebound'){
@@ -2383,7 +2383,7 @@ const periodName=s=>s.ot?tr('延長賽 '+s.ot,'OT '+s.ot):tr('第'+s.quarter+'�
   return O.confirmRoll.call(this);
  };
  P.finishMadeShot=function(reason='made'){if(this.s.shot?.btcgBoxingMade){const p=this.s.shot;p.btcgBoxingMade=0;return this.beginFreeThrows((p.extraFreeThrows||0)+(p.freeThrow?1:0)+1,'boxing-gloves',reason);}return O.finishMadeShot.call(this,reason);};
- // Preserve all existing miss-triggered free throws and stack Boxing Gloves' penalty.
+ // Legacy miss hooks; the final award is normalized by the common maximum-source resolver.
  const originalFT=P.beginFreeThrows;
  P.beginFreeThrows=function(count,reason,finishReason='made'){
   const shot=this.s?.shot;if(shot?.btcgBoxingMiss){count+=shot.btcgBoxingMiss;shot.btcgBoxingMiss=0;}
@@ -2747,6 +2747,49 @@ P.beginRoll=function(kind,side,dice,...args){const before=this._sourceDefenseChe
 // A replacement is a new physical tactic instance; old triggered benefits cannot return.
 (()=>{const P=RulesTestEngine.prototype;for(const method of ['replaceTactic','removeTactic']){const prior=P[method];P[method]=function(side,slot,...args){const b=this.s?.confirmedBatch,id=this.s?.tactics?.[side]?.[slot]?.id,result=prior.call(this,side,slot,...args);if(result&&b&&slot==='off'){if(id==='defense-into-offense'){b.counter[side]=false;b.counterBoost[side]=false;b.pendingCounter[side]=false;}if(id==='transition-offense'){b.transition[side]=false;b.pendingTransition[side]=false;}}return result;};}})();
 
+/* Block failures award a shooting foul; all FT award sources use a maximum. */
+(function installBlockFoulRule(){
+ const P=RulesTestEngine.prototype,O={confirm:P.confirmRoll,finish:P.finishMadeShot};
+ P.freeThrowCandidates=function(made,options={}){const s=this.s,p=s?.shot;if(!p||p.wasBlocked)return[];const side=p.side,rows=[],points=SHOTS[p.kind]?.points||2,add=(id,count,category)=>{if(count>0&&!rows.some(r=>r.id===id))rows.push({id,count,category});};
+  const foul=p.blockFoul||options.blockFailed,boxing=s.firstItems11?.boxing[side]&&!s.itemCleanseBoxing?.[side]?.[p.player]||p.btcgBoxingMade||p.btcgBoxingMiss;
+  if(foul)add('block-foul',made?1:points,'rule');
+  if(made){
+   if(p.freeThrow||s.nextShots[side].some(e=>e.freeThrow))add('whistle',1,'item');
+   if(p.skillId==='wings-unleashed')add('wings-unleashed',1,'player');
+   if(p.skillId==='royal-fox-step'&&(p.acceptedShotDice??(s.roll?.kind==='shot'?s.roll.dice:this.shotCheck(p.kind,p.bonus).dice))>5)add('royal-fox-step',1,'player');
+   if(boxing)add('boxing-gloves',1,'item');
+  }else{
+   if(p.skillId==='new-hope')add('new-hope',3,'player');
+   if(p.skillId==='draw-the-foul')add('draw-the-foul',2,'player');
+   if(s.itemUpdate?.home[side]||p.homeCourtCount)add('home-court-advantage',points,'item');
+   if(hasPassive(this.player(1-side,p.defender??s.defender),'the-bad-guy'))add('the-bad-guy',points,'player');
+   if(boxing)add('boxing-gloves',points,'item');
+  }
+  return rows;
+ };
+ P.beginFreeThrows=function(count,reason,finishReason='made'){
+  const s=this.s,p=s.shot;if(!p)return;const saved=p.freeThrowAwardSnapshot,rows=saved?.rows||this.freeThrowCandidates(finishReason!=='missedFreeThrows');
+  const finalCount=rows.length?Math.max(...rows.map(e=>e.count)):count;
+  p.btcgBoxingMiss=0;p.btcgBoxingMade=0;p.royalFoxFT=0;
+  p.freeRemaining=finalCount;p.freeTotal=finalCount;p.freeReason=reason;p.finishReason=finishReason;p.freeThrowAwardRows=copy(rows);
+  this.log('freeThrowAwarded',{side:p.side,index:p.player,count:finalCount,reason,sources:copy(rows),policy:'maximum',targets:[{side:p.side,index:p.player}]});
+  this.beginRoll('free',p.side,finalCount,1,[4,5,6]);if(s.roll)s.roll.freeThrowAwardRows=copy(rows);
+ };
+ P.finishMadeShot=function(reason='made'){
+  const s=this.s,p=s.shot;if(!p)return O.finish.call(this,reason);
+  // A player's explicit match-winning condition takes precedence over normal FT flow.
+  if(hasPassive(this.player(p.side,p.player),'eighty-one-points-14')&&s.stats[p.side][p.player].fgm>=14)return O.finish.call(this,reason);
+  const rows=p.freeThrowAwardSnapshot?.rows||this.freeThrowCandidates(true),count=Math.max(0,...rows.map(e=>e.count));
+  if(count){p.freeThrowAwardSnapshot={made:true,rows:copy(rows)};return this.beginFreeThrows(count,rows.find(r=>r.count===count).id,reason);}
+  return O.finish.call(this,reason);
+ };
+ P.confirmRoll=function(){const s=this.s,r=s.roll,p=s.shot,watch=p&&r?.kind==='shot'&&s.phase==='rollresult';if(watch)p.freeThrowAwardSnapshot={made:!!r.success,rows:this.freeThrowCandidates(!!r.success)};
+  const result=O.confirm.call(this);
+  if(result&&watch&&!r.success&&s.shot===p&&s.roll?.kind==='rebound'){const rows=p.freeThrowAwardSnapshot.rows,count=Math.max(0,...rows.map(e=>e.count));if(count)this.beginFreeThrows(count,rows.find(e=>e.count===count).id,'missedFreeThrows');}
+  return result;
+ };
+})();
+
 let backgroundAIWorker=null,backgroundAIJob=null,backgroundAISequence=0,backgroundAIUnavailable=false;
 const formalEngine=new RulesTestEngine();let engine=formalEngine,guidedLesson=null,lessonSavedContext=null;let controller='computer',aiTimer=null,inGame=false,lastFinished=null,finishedSaved=null,modalOpen=false,opponentSkillNotice=null,opponentShotNotice=null;
 function storageWarning(message,retry=null){
@@ -2758,7 +2801,7 @@ function loadLastMatch(){try{const raw=localStorage.getItem('btcg-new-rules-last
 function statsPlayerName(row){const i=PLAYER_POOL.findIndex(p=>p.id===row.id);return i>=0?playerName(i):tr('未收錄球員','Unavailable Player')+' ('+row.id+')';}
 let failedFinishedSave=null;
 function finishStorage(){
- if(guidedLesson||engine.s?.tutorial)return;const s=engine.s;if(s?.finished){settleMatchReward(s);settleFinalsReward(s);}if(!s?.finished||finishedSaved===s.id||failedFinishedSave===s.id)return;
+ if(guidedLesson||engine.s?.tutorial)return;const s=engine.s;globalThis.BTCGClearProgress?.recordWin(s);if(s?.finished){settleMatchReward(s);settleFinalsReward(s);}if(!s?.finished||finishedSaved===s.id||failedFinishedSave===s.id)return;
  const snapshot=engine.snapshot();lastFinished=snapshot;
  const retry=()=>{
   if(lastFinished!==snapshot){storageWarning(tr('已有較新的比賽數據，舊數據不會覆蓋新紀錄。','Newer match stats exist. The old match will not overwrite them.'));return;}
@@ -2783,7 +2826,7 @@ function eventText(event){const {key,args:a={}}=event;const s=engine.s;switch(ke
  case 'cardUsed':return sideName(a.side)+' '+tr('使用','played')+'「'+actionName(a.id)+'」'+(a.negated?tr(' 被「違反運動道德」無效化（能量不歸還）。',' negated by Unsportsmanlike Conduct (no Energy refund).'):' → '+(a.id==='quick-return-pass'?playerName(a.from,a.side)+' → '+playerName(a.to,a.side)+' → '+playerName(a.from,a.side):eventTargetText(event))+(a.removed?tr('；移除「','; removed ')+actionName(a.removed.id)+tr('」',''):''));
  case 'returnPassLeg':return actionName(a.id)+' · '+sideName(a.side)+' '+playerName(a.from,a.side)+' → '+playerName(a.to,a.side);
  case 'startEnergy':return sideName(a.side)+' '+actionName('defense-slacking')+' · Energy +'+a.gained;
- case 'freeThrowAwarded':{const source=playerAbilityDefinition(a.reason)||cardDefinition(a.reason);return sideName(a.side)+' '+playerName(a.index,a.side)+(source?' · '+tr(...source.name):'')+tr('：獲得',': awarded ')+a.count+tr('次罰球。',' Free Throws.');}
+ case 'freeThrowAwarded':{const source=a.reason==='block-foul'?{name:['封阻失敗罰球','Failed Block shooting foul']}:playerAbilityDefinition(a.reason)||cardDefinition(a.reason);return sideName(a.side)+' '+playerName(a.index,a.side)+(source?' · '+tr(...source.name):'')+tr('：獲得',': awarded ')+a.count+tr('次罰球。',' Free Throws.')+(a.policy==='maximum'?tr('（同次出手只取最高值）',' (highest award for this shot only)'):'');}
  case 'freeThrowResult':return sideName(a.side)+' '+playerName(a.index,a.side)+(a.made?tr(' 罰球命中！＋1分。',' made the Free Throw! +1 point.'):tr(' 罰球未命中。',' missed the Free Throw.'));
  case 'scoringCatch':return sideName(a.side)+' '+playerName(a.index,a.side)+tr(' 接球，得分機器：下次出手骰面3有效，傳球後解除。',' receives a pass. Scoring Machine: 3 counts on the next shot, until they pass.');
  case 'sixthQueued':return sideName(a.side)+' '+playerName(a.index,a.side)+tr(' 第六人代表：下次防守額外抽牌累計',' Sixth Man: extra draws for next DEF: ')+a.count;
@@ -2815,7 +2858,7 @@ function eventText(event){const {key,args:a={}}=event;const s=engine.s;switch(ke
  case 'puppetBlockFail':return tr('掌中傀儡：額外封阻失敗，無失敗懲罰；守方仍可進行最後一次反應。','Strings of Control: extra Block failed with no penalty; DEF retains its final response.');
  case 'stealFail':return a.puppet?tr('掌中傀儡：額外抄截失敗，無失敗懲罰；原傳球繼續。','Strings of Control: extra Steal failed with no penalty; the pass continues.'):a.isolation?tr('隔離戰術抄截失敗，無失敗懲罰；原傳球繼續。','Isolation Defense Steal failed with no penalty; the pass continues.'):sideName(a.side??s.offense)+tr(' 因對手抄截失敗，可連續行動2次。第一個動作直接出手，對手無法反應；第二個動作出手，對手仍可反應。',' gets 2 consecutive actions after OPP’s failed steal. A shot on the first action skips the DEF response; a shot on the second allows a DEF response.');
  case 'consecutiveAction':return sideName(a.side)+tr(' 連續行動：還可再行動',' · Consecutive actions: ')+a.remaining+tr('次；此時出手，對手仍可反應。',' action remaining. A shot now allows a DEF response.');
- case 'blockFail':return tr('封阻失敗，此次出手＋1骰，直接進行出手判定。','Block failed. Shot Dice +1. Resolve the shot immediately.');
+ case 'blockFail':return tr('封阻失敗，此次出手獲得罰球：未命中依出手類型罰2或3球，命中加罰1球；多個罰球來源只取最高值。','Block failed. A miss awards 2 or 3 free throws by shot type; a make awards 1 bonus free throw. Multiple award sources use the highest count only.');
  case 'jokerPass':return sideName(a.side)+' '+playerName(a.index,a.side)+' · '+tr('前所未見：','The Joker: ')+playerName(a.to,a.side)+' OFF +50';
  case 'splashBoost':return sideName(a.side)+' '+tr('浪花兄弟：同名被動球員永久進攻＋20。','Splash Brothers: players with this passive permanently gain OFF +20.');
  case 'autoDunk':return sideName(a.side)+' '+playerName(a.index,a.side)+tr(' 觸發「長臂劈扣」：直接灌籃得分！＋2分。',' triggered Long Arm Slam: automatic dunk! +2 points.');
@@ -3121,8 +3164,7 @@ function aiApply(e,action){
 }
 function aiShotPoints(e,c){
  const s=e.s,p=s.shot;if(!p)return 0;const chance=(p.skillId==='young-and-fearless'&&c.dice>5||p.skillId==='inside-out-scoring'&&s.energy[p.side]>4)?1:aiRollChance(c),player=e.player(p.side,p.player);
- let value=(1-chance)*(s.itemUpdate?.home[p.side]||0)*SHOTS[p.kind].points*0.5+SHOTS[p.kind].points*chance+(1-chance)*(p.skillId==='new-hope'?1.5:p.skillId==='draw-the-foul'?1:0);
- if(s.nextShots[p.side].some(a=>a.freeThrow))value+=chance*0.5;
+ const blockFailed=s.roll?.kind==='block'&&!s.roll.puppet,award=made=>Math.max(0,...e.freeThrowCandidates(made,{blockFailed}).map(x=>x.count));let value=chance*(SHOTS[p.kind].points+award(true)*0.5)+(1-chance)*award(false)*0.5;
  let reward=p.skillId==='scorer'?0.08:p.skillId==='catching-fire'?0.08:p.skillId==='new-hope'?0.08:0;
  if(hasPassive(player,'sixth-man'))reward+=0.13;if(p.kind==='paint'&&hasPassive(player,'paint-beast'))reward+=0.05;
  if(p.kind==='three'&&hasPassive(player,'splash-brothers'))reward+=e.roster(p.side).filter(p=>hasPassive(p,'splash-brothers')).length*0.05;
@@ -3131,7 +3173,7 @@ function aiShotPoints(e,c){
 }
 function aiResolvedShot(e){
  const s=e.s,r=s.roll;if(!s.shot)return s.events.some(a=>a.key==='autoDunk')?2:0;
- if(r?.kind==='block'){const chance=aiRollChance(r);return (1-chance)*aiShotPoints(e,e.shotCheck(s.shot.kind,s.shot.bonus+(r.puppet?0:1)));}
+ if(r?.kind==='block'){const chance=aiRollChance(r);return (1-chance)*aiShotPoints(e,e.shotCheck(s.shot.kind,s.shot.bonus+0));}
  return aiShotPoints(e,r?.kind==='shot'?r:e.shotCheck(s.shot.kind,s.shot.bonus));
 }
 function aiFinishValue(e){
@@ -3255,7 +3297,7 @@ function aiDefensePlan(root){
    const freeShot=Math.max(threat,aiBestFinish(root)?.score??0),penalty=0.85+freeShot*0.60+(hasPassive(root.player(off,s.holder),'unshakable-handles')?0.20:0);
    score=chance*(threat+1.15)-(1-chance)*penalty;
   }else{
-   // A failed normal/skill Block adds a shot die; compare that outcome to doing nothing.
+   // A failed normal/skill Block awards shooting free throws; compare that risk to doing nothing.
    if(r?.kind==='block'&&!r.puppet){const chance=aiRollChance(r),specialist=r.faces.length>3||r.dice>=r.target+2||action.skillId==='lockdown';if(chance<(specialist?0.30:0.45))continue;}
    const after=response?aiResolvedShot(q):(aiBestFinish(q)?.score??0);score=threat-after;
   }
@@ -3479,25 +3521,23 @@ function createCore(adapter, options = {}) {
     const s=e.s,p=s.shot;
     if(!p) return {makeProbability:0,expectedPoints:0,points:0};
     const r=s.roll, blocked=r?.kind==='block';
-    const check=r?.kind==='shot'?r:e.shotCheck(p.kind,(p.bonus||0)+(blocked&&!r.puppet?1:0));
+    const check=r?.kind==='shot'?r:e.shotCheck(p.kind,p.bonus||0);
     const automatic=p.autoDunk&&e.diff()>0 || p.skillId==='young-and-fearless'&&check.dice>5 || p.skillId==='inside-out-scoring'&&s.energy[p.side]>4;
     const make=automatic||p.batchAutomatic||blocked&&p.skillId==='thunder-drive'?1:probability(check), block=blocked?probability(r):0;
     const points=adapter.shots[p.kind].points;
     // Free throws use the formal engine's default 50% success rate.
-    const missFT=p.skillId==='new-hope'?3:p.skillId==='draw-the-foul'?2:0;
-    const andOne=s.nextShots[p.side].some(x=>x.freeThrow)?0.5:0;
+    const awards=made=>e.freeThrowCandidates(made,{blockFailed:blocked&&!r.puppet}),madeFT=Math.max(0,...awards(true).map(x=>x.count)),missFT=Math.max(0,...awards(false).map(x=>x.count));
     const outcomes={};const add=(points,p)=>outcomes[points]=(outcomes[points]||0)+p;
     add(0,block);
-    add(points,(1-block)*make*(andOne?0.5:1));
-    if(andOne)add(points+1,(1-block)*make*0.5);
-    for(let made=0;made<=missFT;made++) {
-      let combinations=1;for(let j=1;j<=made;j++)combinations=combinations*(missFT-j+1)/j;
-      add(made,(1-block)*(1-make)*combinations*Math.pow(0.5,missFT));
-    }
+    const branch=(base,count,weight)=>{for(let made=0;made<=count;made++){let combinations=1;for(let j=1;j<=made;j++)combinations=combinations*(count-j+1)/j;add(base+made,weight*combinations*Math.pow(0.5,count));}};
+    branch(points,madeFT,(1-block)*make);branch(0,missFT,(1-block)*(1-make));
     return {check:clone(check),blockProbability:block,makeProbability:(1-block)*make,points,outcomes,
-      expectedPoints:(1-block)*(make*(points+andOne)+(1-make)*missFT*0.5),
-      ceiling:Math.max(points+(andOne?1:0),missFT)};
+      freeThrows:{made:madeFT,missed:missFT,policy:'maximum'},
+      expectedPoints:(1-block)*(make*(points+madeFT*0.5)+(1-make)*missFT*0.5),
+      signatureFTGrowth:(adapter.passives?.(e.player(p.side,p.player))||[]).some(a=>a.id==='signature-craft')?(1-block)*(make*madeFT+(1-make)*missFT)*0.5*25:0,
+      ceiling:Math.max(points+madeFT,missFT)};
   }
+
   function clutchValue(e,value,side=e.s.offense) {
     const deficit=e.s.score[1-side]-e.s.score[side];
     if(e.s.limit-e.s.used!==1||deficit<=0)return 0;
@@ -3516,7 +3556,13 @@ function createCore(adapter, options = {}) {
     }
     // Drawing from an unknown deck order is valued from public OWN composition only.
     if(e.s.shot.skillId==='scorer'&&e.s.hands[owner].length<10)utility+=value.makeProbability*0.18;
+    utility+=Math.min(0.5,(value.signatureFTGrowth||0)/500*horizon);
     return utility;
+  }
+  function scoredValue(e,owner,gained){
+    const n=e.s.roll?.kind==='free'&&e.s.roll.side===owner?e.s.roll.dice:0,outcomes={};
+    for(let made=0;made<=n;made++){let c=1;for(let j=1;j<=made;j++)c=c*(n-j+1)/j;outcomes[gained+made]=c*Math.pow(0.5,n);}
+    return {expectedPoints:gained+n*0.5,makeProbability:1,points:gained,ceiling:gained+n,outcomes,action:null};
   }
   function finish(e, owner) {
     if(e.s.shot){const value=shot(e);return {...value,utility:scoringUtility(e,value),action:null};}
@@ -3528,7 +3574,7 @@ function createCore(adapter, options = {}) {
       const next=apply(q,action);
       if(!next.s.shot) {
         const gained=next.s.score[owner]-q.s.score[owner];
-        if(gained>best.expectedPoints)best={expectedPoints:gained,makeProbability:1,points:gained,ceiling:gained,outcomes:{[gained]:1},action};
+        const value=scoredValue(next,owner,gained);if(value.expectedPoints>best.expectedPoints)best={...value,action};
         continue;
       }
       const value=shot(next);value.utility=scoringUtility(next,value);
@@ -3546,7 +3592,7 @@ function createCore(adapter, options = {}) {
     }
     const offense=owner===e.s.offense;
     const gained=q.s.score[owner]-e.s.score[owner];
-    const value=offense?(gained>0?{expectedPoints:gained,makeProbability:1,points:gained,ceiling:gained,outcomes:{[gained]:1},action:null}:finish(q,owner)):shot(q);
+    const value=offense?(gained>0?scoredValue(q,owner,gained):finish(q,owner)):shot(q);
     const cost=e.s.energy[owner]-q.s.energy[owner]+(offense&&!q.s.shot?(value.cost||0):0);
     let expectedPoints=value.expectedPoints*survival;
     if(offense&&!q.s.shot)expectedPoints=Math.max(expectedPoints,q.s.score[owner]-e.s.score[owner]);
@@ -3588,6 +3634,7 @@ function createCore(adapter, options = {}) {
     const drawValue=draws&&drawCount&&e.s.hands[owner].length<=10 ?
       Math.min(draws,10-e.s.hands[owner].length+1)*drawPool.reduce((sum,c)=>sum+c.unseenCount*
         (c.category==='戰術'?(c.equippedTactic?0.04:0.24):0.18),0)/drawCount:0;
+    const ftGrowthExposure=!offense&&e.s.shot?-((value.signatureFTGrowth||0)-(shot(e).signatureFTGrowth||0))/500*Math.min(2.5,horizon):0;
     const guardGain=(q.s.confirmedBatch?.guard[owner]||0)-(e.s.confirmedBatch?.guard[owner]||0);
     const conditionalReturn=!offense&&guardGain>0&&horizon?guardGain*0.5*(e.s.shot?(shot(e).outcomes?.[0]??1-shot(e).makeProbability):Math.max(0,1-(finish(e,e.s.offense).makeProbability||0))):0;
     const futureSystem=(state)=>{const id=state.activeTactic(owner,'off')?.id;if(id==='transition-offense')return 0.08*team.players.filter(p=>adapter.skills(state.player(owner,p.index)).some(a=>a.side!=='def'&&a.cost>0)).length;if(id==='defense-into-offense')return 0.18+Math.min(0.12,team.players.reduce((n,p)=>n+p.playmaking,0)*0.04);return 0;};
@@ -3598,8 +3645,8 @@ function createCore(adapter, options = {}) {
     const skipCost=action.type==='skip'?(offense?0.45:0.14):0;
     const systemFit=card?.category==='戰術'&&team.tacticPlan?.[card.side]?.primary===card.id?0.025:0;
     const components={expectedPoints,preventedPoints:offense?0:beforeThreat-defenseAfter,energy:-cost*energyWeight,setup:-setup,clutch,
-      tacticSuppression:suppression,publicDefenseExposure:exposure,longTermReturn:futureGain,roleUtilization:roleUse,ownDeckDrawValue:drawValue,scoringEffectReturn:skillReturn,resourceReturn:resources,cardDenial:denial,conditionalDefenseReturn:conditionalReturn,tacticSetupReturn:tacticSetup,skipPenalty:-skipCost,systemFit};
-    const score=(offense?expectedPoints:components.preventedPoints)+components.energy+components.setup+clutch+suppression+exposure+futureGain+roleUse+drawValue+skillReturn+resources+denial+conditionalReturn+tacticSetup-skipCost+systemFit;
+      tacticSuppression:suppression,publicDefenseExposure:exposure,longTermReturn:futureGain,roleUtilization:roleUse,ownDeckDrawValue:drawValue,scoringEffectReturn:skillReturn,resourceReturn:resources,cardDenial:denial,conditionalDefenseReturn:conditionalReturn,freeThrowGrowthExposure:ftGrowthExposure,tacticSetupReturn:tacticSetup,skipPenalty:-skipCost,systemFit};
+    const score=(offense?expectedPoints:components.preventedPoints)+components.energy+components.setup+clutch+suppression+exposure+futureGain+roleUse+drawValue+skillReturn+resources+denial+conditionalReturn+ftGrowthExposure+tacticSetup-skipCost+systemFit;
     const purpose=card?(card.category==='戰術'?'establish-long-term-tactic':'immediate-item-effect'):
       action.type==='skill'?(q.s.shot?'finish-scoring':q.s.holder!==e.s.holder?'enable-teammate':offense?'prepare-scoring':'suppress-opponent'):action.type;
     return {action:clone(action),score,components,energyCost:cost,survivalProbability:survival,
@@ -3672,7 +3719,7 @@ if(typeof module!=='undefined')module.exports={createCore,probability};
 else globalThis.BTCGAI2={createCore,probability};
 
 })();
-const btcgAI2Core=BTCGAI2.createCore({create:()=>new RulesTestEngine(()=>0.5),skills:skillsOf,shots:SHOTS,card:cardDefinition},{timeAvailable:aiTimeAvailable});
+const btcgAI2Core=BTCGAI2.createCore({create:()=>new RulesTestEngine(()=>0.5),skills:skillsOf,passives:passiveList,shots:SHOTS,card:cardDefinition},{timeAvailable:aiTimeAvailable});
 const btcgAI2Runtime={core:btcgAI2Core,calls:0,fallbacks:0,lastDecision:null};
 globalThis.BTCGAI2Runtime=btcgAI2Runtime;
 function chooseAI(){
@@ -3745,21 +3792,7 @@ function themeCollectionPage(kind){
 
 function showLobby(){resetBattlePresentation();dismissMatchNavigation(false);clearTimeout(aiTimer);pendingTarget=null;legacyRollPrompt=null;selectedPassSide=null;selectedItem=null;$('battleCardFeedback').hidden=true;finishStorage();inGame=false;leaveGuidedLesson();closeModal();$('noticeRoot').innerHTML='';$('gameScreen').style.display='none';$('menuView').classList.remove('active');$('mainLobby').style.display='';document.body.classList.add('lobby-open');$('lobbyLastStats').hidden=!lastFinished;}
 function startMatch(mode='computer',names={},cardTrial=false,deckLists=null,lineupLists=null,tutorial=false,matchConfig=null){resetBattlePresentation();if(guidedLesson)showLobby();engine=formalEngine;clearTimeout(aiTimer);pendingTarget=null;legacyRollPrompt=null;selectedPassSide=null;selectedSkill=null;selectedSkillId=null;selectedItem=null;opponentSkillNotice=null;opponentShotNotice=null;closeModal();controller=mode;inGame=true;finishedSaved=null;if(mode==='computer'&&!tutorial&&!deckLists){const opponentLineup=lineupLists?.[1]||TEST_PLAYERS.map(p=>p.id);deckLists=[cardTrial?DEFAULT_STARTER_DECK.slice():[],buildOpponentDeck(opponentLineup)];}engine.start({intro:true,cardTrial,tutorial,quarters:matchConfig?.quarters||4,lineups:lineupLists||[starterCollection.lineups[starterCollection.activeLineup].slice(),TEST_PLAYERS.map(p=>p.id)],...(deckLists?{decks:deckLists}:{}),names:{playerDeckName:cardTrial?tr('新手預設卡組','Default Starter Deck'):setupLabel('deck',starterCollection.activeDeck),...names}});if(mode==='computer'&&deckLists?.[1]?.aiPlan)engine.s.aiDeckPlans=[null,copy(deckLists[1].aiPlan)];if(matchConfig){engine.s.modeKey=matchConfig.id;engine.s.themeId=matchConfig.themeId||null;engine.s.rewardId=globalThis.crypto?.randomUUID?.()||Date.now().toString(36)+'-'+Math.random().toString(36).slice(2);engine.s.rewardStatus='pending';}$('mainLobby').style.display='none';$('menuView').classList.remove('active');$('gameScreen').style.display='block';document.body.classList.remove('lobby-open');$('battleRules').innerHTML='<summary>'+tr('比賽規則','Game Rules')+'</summary>'+rulesHTML();render();scheduleAI();}
-function rulesHTML(){return '<h3>'+tr('新規則・卡片測試','New Rules · Card Test')+'</h3><ul>'+[
- engine.s?.regulationQuarters===1?tr('單節決勝，每節雙方共用10次球權。開場擲骰勝方先攻，平手進入延長賽。','One quarter, 10 shared possessions. Opening-roll winner starts; ties go to overtime.'):tr('四節，每節雙方共用10次球權。第一、四節由開場擲骰勝方先攻，第二、三節由另一方先攻。','4 quarters, 10 shared possessions each. Opening-roll winner starts Q1 and Q4; the other side starts Q2 and Q3.'),
- tr('雙方輪流一次行動：出牌、技能、傳球、出手、抄截或略過。傳球耗1能量。守方只能在出手反應時封阻。','Alternate one action: a card, skill, pass, shot, Steal, or skip. Pass costs 1 Energy. Blocks are only available in the shot response.'),
- tr('禁區：3能量、2骰中1、2分。中距離：2能量、3骰中2、2分。三分：3能量、3骰中2、3分。任何能量皆可受壓迫出手：1骰中1、只有6有效、2分。','Inside: Energy 3, Dice 2, Target 1, 2 points. Mid-range: Energy 2, Dice 3, Target 2, 2 points. 3PT: Energy 3, Dice 3, Target 2, 3 points. At 0 Energy: Forced shot, Dice 1, Target 1, only 6 counts, 2 points.'),
- tr('擲骰數最低可為0。0骰且仍需有效數時直接失敗；需有效數為0時直接成功。','Dice may reach 0. With 0 Dice and a positive Target, the roll fails automatically. Target 0 succeeds automatically.'),
- tr('一般有效骰面4、5、6。出手：進攻每高滿防守100點＋1骰，反之－1骰。抄截、封阻以防守比較進攻。最低1骰，需有效數不變。受壓迫出手也適用。籃板不比較攻防。','4, 5, 6 normally count. Each full 100-point OFF advantage adds 1 shot die; each full DEF advantage removes 1. Steals / Blocks compare DEF to OFF. Minimum 1 die; Target unchanged. Forced shots use this comparison too. Rebounds ignore OFF / DEF.'),
- tr('宣告出手後，守方有一次反應，出牌、技能、封阻或略過擇一；之後直接判定。','After a shot is declared, DEF gets one response: card, skill, Block, or skip. Then resolve the shot.'),
- tr('抄截：2能量、3骰中3。成功由抄截者持球，抄截＋1、原持球者失誤＋1；不扣球權、不回能、不抽牌。失敗讓對手連續2動，第一動出手無法反應，第二動出手仍有反應。','Steal: Energy 2, Dice 3, Target 3. Success: STL +1, opposing TOV +1, defender takes the ball. No possession spent, refill, or draw. Failure: OFF gets 2 actions; a first-action shot skips DEF response, a second-action shot allows it.'),
- tr('封阻：2能量、3骰中3。成功阻攻＋1、籃板＋1，出手計未命中，轉換並扣1次球權。失敗對手此次出手＋1骰，直接判定。','Block: Energy 2, Dice 3, Target 3. Success: BLK +1 and REB +1, shot counts as missed, switch and spend 1 possession. Failure: shot Dice +1; resolve immediately.'),
- tr('未命中由守方擲3骰中1爭搶籃板，不耗能或行動。成功對位者籃板＋1並持球，扣1次球權；失敗原出手者籃板＋1並先行動，不扣球權、不回能、不抽牌。','After a miss, DEF rolls Dice 3, Target 1 for the rebound, at no Energy or action cost. Success: defender REB +1, takes the ball, spend 1 possession. Failure: shooter REB +1, acts first; no possession spent, refill, or draw.'),
- tr('命中轉由對方PG持球，扣1次球權。持球方連續3次略過，失誤＋1，交給對方PG，不扣球權；傳球或出手會清除略過計數。','Made shot: spend 1 possession; opposing PG takes the ball. OFF skipping 3 consecutive actions causes TOV +1 and gives the ball to the opposing PG, without spending a possession. A pass or shot resets the skip count.'),
- tr('開場各10能量、抽5張。任何球權轉換，雙方能量一律重設為10；增加能量可暫時超過10，直到下次球權轉換。球權消耗後各抽2張；抄截及略過失誤換球權不額外抽牌。換節或進入延長賽：能量重設為10、各抽2張，僅執行一次。手牌上限10，超出不抽；棄牌堆洗回續抽。','Start: Energy 10 and draw 5. Every possession change resets both sides to 10 Energy. Energy gains may exceed 10 until the next possession change. A spent possession draws 2 cards each; Steals and skip turnovers do not add draws. New quarter / OT: reset to 10 Energy and draw 2, once only. Max hand 10; excess draws stay in the deck. Reshuffle discards when needed.'),
- tr('平手進入3次共用球權的延長賽，第一次重新擲骰決定先攻，後續延長賽交替先攻，直到分勝負。最後球權完整結算才判定勝負。','Ties enter OT with 3 shared possessions. Roll for the first OT starter; alternate in later OTs until a winner is decided. Finish resolving the final possession before checking the score.'),
- tr('收錄'+TEST_PLAYERS.length+'位新秀球員、'+CHAMPION_PLAYERS.length+'位總冠軍球員、'+FIRST_EDITION_PLAYERS.length+'位第一彈球員、'+ACTION_CARDS.filter(c=>c.category==='道具').length+'種道具與'+ACTION_CARDS.filter(c=>c.category==='戰術').length+'種戰術。牌組30張，同名戰術卡最多4張、道具卡最多4張。OPP = 對手。戰術依卡片條件生效，跨球權與換節保留，直到同類替換或被卡片移除；衝突判定優先序：球員效果＞戰術＞道具；「優先更換」先於一般更換。可並存的加減效果仍累計。','Includes '+TEST_PLAYERS.length+' rookies, '+CHAMPION_PLAYERS.length+' Champions, '+FIRST_EDITION_PLAYERS.length+' First Edition players, '+ACTION_CARDS.filter(c=>c.category==='道具').length+' items and '+ACTION_CARDS.filter(c=>c.category==='戰術').length+' tactics. Decks: 30 cards, max 4 copies per Tactic and 4 per Item. OPP = Opponent. Tactics apply under their stated conditions and persist across possessions and quarters until replaced or removed. Conflicting effects: Player > Tactic > Item. Priority switches override normal switches. Compatible numeric modifiers still stack.')
- ].map(x=>'<li>'+x+'</li>').join('')+'</ul>';}
+function rulesHTML(){return '';}// Rules are displayed by the topic guide below.
 // Only explicitly registered first-edition cards belong in shop packs.
 // Rookies, Champions and legacy cards are never implicitly added to this pool.
 const FIRST_EDITION_POOL=Object.freeze({players:Object.freeze(PLAYER_POOL.filter(p=>p.series==='first')),actions:Object.freeze(ACTION_CARDS.filter(c=>c.series==='first'))});
@@ -4011,10 +4044,10 @@ function renderStarterRoster(){
 function renameStarterSetup(kind){const index=editingSetup;openModal('<h2>'+tr('陣容／卡組命名','Name Your Setup')+'</h2><p>'+tr('最多8字，僅限中文、英文及數字。','Up to 8 Chinese characters, English letters, or digits.')+'</p><input id="rookieSetupName" value="'+esc(starterCollection[kind+'Names'][index])+'" aria-label="'+tr('名稱','Name')+'"><p id="rookieNameError" class="danger" role="alert"></p><button id="rookieSaveName" class="primary">'+tr('儲存','Save')+'</button>');bind('rookieSaveName',()=>{const value=$('rookieSetupName').value;if(!validSetupName(value)){$('rookieNameError').textContent=tr('名稱需1至8字，只能使用中文、英文或數字。','Use 1–8 Chinese characters, English letters, or digits.');return;}starterCollection[kind+'Names'][index]=value;if(!saveStarterCollection())return;closeModal();renderStarterRoster();});}
 
 const PLAY_MODES=Object.freeze([
- {id:'quick-random',name:['速戰速決','Quick Match'],team:['隨機隊伍','Random Team'],desc:['( 與AI來場一節決勝負的快速對戰 )','( A quick, one-quarter match against AI )'],quarters:1,win:200,loss:100,open:true},
- {id:'standard-random',name:['標準對戰','Standard Match'],team:['隨機隊伍','Random Team'],desc:['( 與AI進行一場4節完整的BTCG對戰 )','( A full four-quarter BTCG match against AI )'],quarters:4,win:1000,loss:600,open:true},
- {id:'quick-theme',name:['速戰速決','Quick Match'],team:['主題隊伍','Themed Team'],desc:['( 與完整球隊進行一節決勝負 )','( A one-quarter match against a complete team )'],quarters:1,win:400,loss:200,open:true},
- {id:'standard-theme',name:['標準對戰','Standard Match'],team:['主題隊伍','Themed Team'],desc:['( 與完整球隊進行一場4節完整對戰 )','( A full four-quarter match against a complete team )'],quarters:4,win:2000,loss:1000,open:true}
+ {id:'quick-random',name:['速戰速決','Quick Match'],team:['隨機組成','Random Lineup'],desc:['( 與AI來場一節決勝負的快速對戰 )','( A quick, one-quarter match against AI )'],quarters:1,win:200,loss:100,open:true},
+ {id:'standard-random',name:['標準比賽','Standard Match'],team:['隨機組成','Random Lineup'],desc:['( 與AI進行一場4節完整的BTCG對戰 )','( A full four-quarter BTCG match against AI )'],quarters:4,win:1000,loss:600,open:true},
+ {id:'quick-theme',name:['速戰速決','Quick Match'],team:['聯盟隊伍','League Team'],desc:['( 與完整球隊進行一節決勝負 )','( A one-quarter match against a complete team )'],quarters:1,win:400,loss:200,open:true},
+ {id:'standard-theme',name:['標準比賽','Standard Match'],team:['聯盟隊伍','League Team'],desc:['( 與完整球隊進行一場4節完整對戰 )','( A full four-quarter match against a complete team )'],quarters:4,win:2000,loss:1000,open:true}
 ]);
 
 const THEME_TEAMS=Object.freeze([
@@ -4054,8 +4087,9 @@ function themedOpponentDeck(team){return shuffleOpponentDeck(buildOpponentDeck(t
 const CHALLENGE_MODES=Object.freeze([
  {id:'league',name:['征戰聯盟','League Conquest'],desc:['( 嘗試爭奪冠軍的各個強隊,究竟誰是最後的王者 )','( Championship contenders compete. Who will be the last team standing? )']},
  {id:'historic',name:['歷史名隊','Historic Teams'],desc:['( 紀錄於回憶中的歷史名隊,舊世代的強者依舊如高牆般聳立 )','( Teams etched in memory. Legends of past generations still stand tall. )']},
- {id:'eras',name:['輝煌年代','Golden Eras'],desc:['( 各個年代的代表人物齊聚一堂,籃球演進的教科書再現於球場 )','( Icons from every era reunite, bringing basketball’s evolution to the court. )']},
  {id:'champions',name:['歷代冠軍','Champions Through Time'],desc:['( 那些曾經奪冠的王者勁旅,難以抗衡的球隊體系 )','( Championship teams with formidable systems that stand the test of time. )']},
+ {id:'all-time',name:['隊史最佳','All-Time Teams'],desc:['( 集結各隊歷史最佳球員，迎戰完整隊史陣容 )','( Face each franchise’s all-time great lineup )']},
+ {id:'eras',name:['輝煌年代','Golden Eras'],desc:['( 各個年代的代表人物齊聚一堂,籃球演進的教科書再現於球場 )','( Icons from every era reunite, bringing basketball’s evolution to the court. )']},
  {id:'dream',name:['夢之隊','Dream Teams'],desc:['( 背負國家榮耀的傳奇隊伍,讓世界看到籃球的最高水準 )','( Legendary teams carry national pride and showcase basketball at its highest level. )']},
  {id:'hall',name:['名人堂','Hall of Fame'],desc:['( 紀錄於名冊的傳說人物,挑戰不可能,成為不可能 )','( Face the legends. Challenge the impossible. Become the impossible. )']}
 ]);
@@ -4136,7 +4170,7 @@ function renderTestAccess(unlocked=false){
  bind('btcgGiveCoins',()=>grant('coins'));bind('btcgGivePlayers',()=>grant('players'));bind('btcgGiveActions',()=>grant('actions'));
 }
 
-function openPage(key){if(key==='tutorial')tutorialEntryView='choose';$('menuView').dataset.page=key;$('mainLobby').style.display='none';$('menuView').classList.add('active');$('menuView').classList.remove('wide-collection-menu','mode-browser','collection-browser','collection-shop','collection-roster');$('menuTag').textContent=tr('新規則測試','New Rules Test');$('menuTitle').textContent=tr('基礎攻防測試','Base Gameplay Test');
+function openPage(key){if(key==='quick'||key==='challenge'){globalThis.BTCGModeBrowser.open(key);return;}if(key==='tutorial')tutorialEntryView='choose';$('menuView').dataset.page=key;$('mainLobby').style.display='none';$('menuView').classList.add('active');$('menuView').classList.remove('wide-collection-menu','mode-browser','collection-browser','collection-shop','collection-roster');$('menuTag').textContent=tr('新規則測試','New Rules Test');$('menuTitle').textContent=tr('基礎攻防測試','Base Gameplay Test');
  if(key==='quick'||key==='challenge'){renderModeBrowser(key);}
  else if(key==='roster'){rosterTab='lineup';rosterTeam=null;rosterPlayer=null;editingSetup=starterCollection.activeLineup;editingSlot=null;renderStarterRoster();}
  else if(key==='tutorial'){renderTutorialEntry();}
@@ -4284,7 +4318,7 @@ if(window.addEventListener){window.addEventListener('resize',positionLessonGuide
 const LESSON_TWO_EN={
 matchup:['Ball Handler / Main Defender','These are the ball handler and the Main Defender.\n\nOnly the ball handler can shoot. Pass to let another player shoot.'],
 shots:['Shot Types','The right grid contains shot types. Click player cards to inspect their skills.\n\n3PT shot ⚡ Energy 3 (Dice 3 / Target 2 / 3 points)\nInside shot ⚡ Energy 3 (Dice 2 / Target 1 / 2 points)\nMid-range shot ⚡ Energy 2 (Dice 3 / Target 2 / 2 points)'],
-mid:['Mid-range Shot','Click Mid-range in the right action grid.'],response:['The Final Response','After a shot is declared,\nDEF has one final action to respond.'],brokenAI:['OPP Plays a Card','The Tutorial Team is playing Broken Dice.'],brokenOpen:['Match Review','Click Broken Dice in Match Review to inspect the effect and its targets.'],brokenRead:['Broken Dice','Read the effect, then close the details to continue.'],brokenExplain:['Dice −1','OPP played Broken Dice.\nWe have one fewer die for this shot roll.\nOur chance of scoring has dropped.'],midRoll:['Shot Roll','Click Roll Next Die.'],midResult:['Missed Shot','Click Missed · Roll DEF Rebound.'],reboundExplain:['Rebounds','After a missed shot, the teams compete for the rebound.\nDEF rolls Dice 3 / Target 1.\nIf no die counts, our shooter gets the OFF rebound and keeps the ball.'],reboundRoll:['DEF Rebound Roll','Watch the DEF rebound roll.'],reboundResult:['OFF Rebound','No opposing die counted! Confirm the result. Our shooter keeps the ball.'],dimeOpen:['Dime','Click C.Ball to inspect Dime.'],dimeUse:['Dime','Read the skill, then click Use Skill.'],dimeTarget:['Choose a Receiver','Click D.Cooker to complete Dime. You cannot pass to yourself.'],headbandAI:['OPP Plays a Card','The Tutorial Team plays White Headband.'],shooterOpen:['SHOOTER','Click D.Cooker to inspect SHOOTER.'],shooterUse:['SHOOTER','Read the skill, then click Use Skill.'],shooterTarget:['Use SHOOTER','Click D.Cooker to confirm.'],blockAI:['OPP Attempts a Block','The Tutorial Team is preparing to Block this 3PT shot.'],blockExplain:['Block','After a shot is declared, DEF can attempt a Block.\n< Energy 2 / Dice 3 / Target 3 >\n< Success: change possession >\n< Failure: this shot roll has Dice +1 >'],blockRoll:['Block Roll','Watch the opposing Block roll.'],blockResult:['Block Failed','OPP failed to Block! Confirm the result. This shot roll has Dice +1.'],threeRoll:['3PT Shot Roll','Click Roll Next Die to resolve the shot.'],threeResult:['3PT Made','Confirm the shot result.'],firstScore:['Your First Basket!','Congratulations on your first basket!\nCombine skills and cards to score more easily.\nDiscover your own combinations.\nNext, let’s learn DEF.'],jonikAI:['OPP Uses a Skill','The Tutorial Team is preparing Ultimate Versatility.'],jonikRead:['Ultimate Versatility','Read the opposing skill, then click Confirm · Continue at the bottom right.'],stats:['OFF / DEF','Each full 100-point OFF advantage: Dice +1 (stacks).\nEach full 100-point DEF advantage: Dice −1 (stacks).'],handsOpen:['Hands Up','Inspect Hands Up, the leftmost card in your hand.'],handsRead:['Hands Up','N.Jonik can only take Forced Shots and cannot use active skills until passing.'],handsTarget:['Choose a Target','Click N.Jonik to use Hands Up.'],passAI:['Pass to Remove the Restriction','N.Jonik passes to A.David.'],zero:['OPP Has 0 Energy','With 0 Energy and no playable cards,\nOFF must take a Forced shot.\n( Energy 0 / Dice 1 / Target 1 / 2 points )\nWe still have Energy. Try a Steal!\n\nPractice setup: N.Jonik passes to A.David and OPP Energy is set to 0 to demonstrate running out. L.Beams is the Main Defender, equipped with White Headband (DEF +50).'],steal:['Try a Steal','Click Steal.'],stealStart:['Steal Roll','Dice 3 / Target 3\nConfirm this guide, then click Roll Next Die in the roll window.'],stealRoll:['Roll for the Steal','Click Roll Next Die.'],stealResult:['Steal Successful','Confirm the roll result.'],stealExplain:['Steal Successful!','Congratulations on your Steal!\nSteals are a high-risk, high-reward DEF option.\nSuccess gives your team the ball without spending a possession.\nFailure gives OPP two consecutive actions.\nChoose the timing carefully!'],tactic:['Perimeter Offense','Play Perimeter Offense, the leftmost card in your hand.'],tacticSkip:['Tactic Active','Wait for OPP to finish the action.'],tacticOpen:['OFF Tactic','Click Perimeter Offense in the OFF Tactic slot to inspect it.'],tacticRead:['Using Tactics','Tactics are ongoing effects, with separate OFF and DEF slots.\nThey remain until replaced by a new tactic of the same type or removed by an effect.\nThese are powerful bonuses!'],tankOpen:['Tank Drive','Click L.Beams to inspect Tank Drive.'],tankUse:['Tank Drive','Read the skill, then click Use Skill.'],tankTarget:['Use Tank Drive','Click L.Beams to confirm.'],tankSkip:['Shot Response','Wait for OPP’s final response.'],tankRoll:['Inside Shot Roll','Click Roll Next Die. Tank Drive makes 3 count too!'],tankResult:['Scored!','Confirm the shot result.'],complete:['Tutorial Complete','Congratulations on completing the <BTCG> tutorial!\nThe rules follow basketball,\nplayed through cards on the table.\n<< Your reward: 10 First Edition Player Packs >>\nUse these cards to begin your journey.\nFace stronger opponents and combinations.\nDefeat the legends and take their place!']
+mid:['Mid-range Shot','Click Mid-range in the right action grid.'],response:['The Final Response','After a shot is declared,\nDEF has one final action to respond.'],brokenAI:['OPP Plays a Card','The Tutorial Team is playing Broken Dice.'],brokenOpen:['Match Review','Click Broken Dice in Match Review to inspect the effect and its targets.'],brokenRead:['Broken Dice','Read the effect, then close the details to continue.'],brokenExplain:['Dice −1','OPP played Broken Dice.\nWe have one fewer die for this shot roll.\nOur chance of scoring has dropped.'],midRoll:['Shot Roll','Click Roll Next Die.'],midResult:['Missed Shot','Click Missed · Roll DEF Rebound.'],reboundExplain:['Rebounds','After a missed shot, the teams compete for the rebound.\nDEF rolls Dice 3 / Target 1.\nIf no die counts, our shooter gets the OFF rebound and keeps the ball.'],reboundRoll:['DEF Rebound Roll','Watch the DEF rebound roll.'],reboundResult:['OFF Rebound','No opposing die counted! Confirm the result. Our shooter keeps the ball.'],dimeOpen:['Dime','Click C.Ball to inspect Dime.'],dimeUse:['Dime','Read the skill, then click Use Skill.'],dimeTarget:['Choose a Receiver','Click D.Cooker to complete Dime. You cannot pass to yourself.'],headbandAI:['OPP Plays a Card','The Tutorial Team plays White Headband.'],shooterOpen:['SHOOTER','Click D.Cooker to inspect SHOOTER.'],shooterUse:['SHOOTER','Read the skill, then click Use Skill.'],shooterTarget:['Use SHOOTER','Click D.Cooker to confirm.'],blockAI:['OPP Attempts a Block','The Tutorial Team is preparing to Block this 3PT shot.'],blockExplain:['Block','After a shot is declared, DEF can attempt a Block.\n< Energy 2 / Dice 3 / Target 3 >\n< Success: change possession >\n< Failure: a miss awards 2 or 3 free throws; a make awards 1 bonus free throw >'],blockRoll:['Block Roll','Watch the opposing Block roll.'],blockResult:['Block Failed','OPP failed to Block! Roll the shot normally: a miss awards 3 free throws; a make awards 1 bonus free throw.'],threeRoll:['3PT Shot Roll','Click Roll Next Die to resolve the shot.'],threeResult:['3PT Made','Confirm to proceed to the bonus free throw.'],freeExplain:['Bonus Free Throw','The Block failed and our 3PT shot scored. We get 1 bonus free throw.\nOn a miss, a 3PT shot would award 3 free throws; Mid-range, Inside and Forced shots award 2.\nIf several effects award free throws, use the highest count only.'],freeRoll:['Free Throw Roll','Click Roll Next Die. Each successful die scores 1 point.'],freeResult:['Free Throw Result','Confirm the free throw result to finish this possession.'],firstScore:['Your First Basket!','Congratulations on your first basket!\nCombine skills and cards to score more easily.\nDiscover your own combinations.\nNext, let’s learn DEF.'],jonikAI:['OPP Uses a Skill','The Tutorial Team is preparing Ultimate Versatility.'],jonikRead:['Ultimate Versatility','Read the opposing skill, then click Confirm · Continue at the bottom right.'],stats:['OFF / DEF','Each full 100-point OFF advantage: Dice +1 (stacks).\nEach full 100-point DEF advantage: Dice −1 (stacks).'],handsOpen:['Hands Up','Inspect Hands Up, the leftmost card in your hand.'],handsRead:['Hands Up','N.Jonik can only take Forced Shots and cannot use active skills until passing.'],handsTarget:['Choose a Target','Click N.Jonik to use Hands Up.'],passAI:['Pass to Remove the Restriction','N.Jonik passes to A.David.'],zero:['OPP Has 0 Energy','With 0 Energy and no playable cards,\nOFF must take a Forced shot.\n( Energy 0 / Dice 1 / Target 1 / 2 points )\nWe still have Energy. Try a Steal!\n\nPractice setup: N.Jonik passes to A.David and OPP Energy is set to 0 to demonstrate running out. L.Beams is the Main Defender, equipped with White Headband (DEF +50).'],steal:['Try a Steal','Click Steal.'],stealStart:['Steal Roll','Dice 3 / Target 3\nConfirm this guide, then click Roll Next Die in the roll window.'],stealRoll:['Roll for the Steal','Click Roll Next Die.'],stealResult:['Steal Successful','Confirm the roll result.'],stealExplain:['Steal Successful!','Congratulations on your Steal!\nSteals are a high-risk, high-reward DEF option.\nSuccess gives your team the ball without spending a possession.\nFailure gives OPP two consecutive actions.\nChoose the timing carefully!'],tactic:['Perimeter Offense','Play Perimeter Offense, the leftmost card in your hand.'],tacticSkip:['Tactic Active','Wait for OPP to finish the action.'],tacticOpen:['OFF Tactic','Click Perimeter Offense in the OFF Tactic slot to inspect it.'],tacticRead:['Using Tactics','Tactics are ongoing effects, with separate OFF and DEF slots.\nThey remain until replaced by a new tactic of the same type or removed by an effect.\nThese are powerful bonuses!'],tankOpen:['Tank Drive','Click L.Beams to inspect Tank Drive.'],tankUse:['Tank Drive','Read the skill, then click Use Skill.'],tankTarget:['Use Tank Drive','Click L.Beams to confirm.'],tankSkip:['Shot Response','Wait for OPP’s final response.'],tankRoll:['Inside Shot Roll','Click Roll Next Die. Tank Drive makes 3 count too!'],tankResult:['Scored!','Confirm the shot result.'],complete:['Tutorial Complete','Congratulations on completing the <BTCG> tutorial!\nThe rules follow basketball,\nplayed through cards on the table.\n<< Your reward: 10 First Edition Player Packs >>\nUse these cards to begin your journey.\nFace stronger opponents and combinations.\nDefeat the legends and take their place!']
 };
 
 const LESSON_TWO_STEPS=[
@@ -4309,11 +4343,14 @@ const LESSON_TWO_STEPS=[
  ['shooterUse','三分射術','閱讀技能後，點擊「發動技能」。',['modalroot'],true],
  ['shooterTarget','發動三分射術','點擊D.Cooker，確認使用。',['player:0:1'],true],
  ['blockAI','對手嘗試封阻','新手教學隊準備封阻這次三分出手。',['shotpreview'],true],
- ['blockExplain','封阻','當決定出手後防守方都可以嘗試封阻\n< 能量2 擲骰3 需有效3 >\n< 如成功 則轉換球權 >\n< 如失敗 此次出手判定擲骰數+1 >'],
+ ['blockExplain','封阻','當決定出手後防守方都可以嘗試封阻\n< 能量2 擲骰3 需有效3 >\n< 如成功 則轉換球權 >\n< 如失敗 未命中依出手類型罰2或3球；命中加罰1球 >'],
  ['blockRoll','封阻判定','觀看防守方的擲骰結果。',['shotpreview'],true],
- ['blockResult','封阻失敗','對手封阻失敗！確認結果，這次出手擲骰數＋1。',['shotpreview','lessonDice'],true],
+ ['blockResult','封阻失敗','對手封阻失敗！確認後正常擲骰出手；未進獲得3次罰球，命中加罰1球。',['shotpreview','lessonDice'],true],
  ['threeRoll','三分出手判定','點擊「擲下一顆骰子」，完成這次出手。',['lessonDice','shotpreview'],true],
- ['threeResult','三分命中','確認這次出手結果。',['shotpreview','lessonDice'],true],
+ ['threeResult','三分命中','確認後，進行封阻失敗帶來的1次加罰。',['shotpreview','lessonDice'],true],
+ ['freeExplain','封阻失敗的加罰','對手封阻失敗，而我們的三分出手命中，因此獲得1次加罰。\n若三分未進，則獲得3次罰球；中距離、禁區、受壓迫出手未進為2次。\n同次出手有多個罰球效果時，只取最高罰球數。',['shotpreview']],
+ ['freeRoll','罰球判定','點擊擲下一顆骰子；每次擲出有效骰面得1分。',['shotpreview','lessonDice'],true],
+ ['freeResult','罰球結果','確認罰球結果，完成這次進攻球權。',['shotpreview','lessonDice'],true],
  ['firstScore','第一次得分！','恭喜你剛完成第一次出手得分!\n技能與卡片搭配起來得分就會輕鬆很多\n怎麼運用就要大家自己發掘了\n接下來我們來學怎麼防守'],
  ['jonikAI','對手發動技能','新手教學隊準備發動極致全能。',['player:1:4'],true],
  ['jonikRead','極致全能','先閱讀對手的技能效果，再點擊右下角確認繼續。',['modalroot'],true],
@@ -4342,7 +4379,7 @@ const LESSON_TWO_STEPS=[
 ];
 function lessonTwoKey(){return guidedLesson?.course===2?LESSON_TWO_STEPS[guidedLesson.step]?.[0]:null;}
 function teachingCard(side,id){const s=engine.s,at=s.hands[side].findIndex(c=>c.id===id);if(at>=0){s.hands[side].unshift(s.hands[side].splice(at,1)[0]);return s.hands[side][0];}for(const zone of ['decks','discards']){const i=s[zone][side].findIndex(c=>c.id===id);if(i<0)continue;const c=s[zone][side].splice(i,1)[0];if(s.hands[side].length>=10)s.decks[side].push(s.hands[side].pop());s.hands[side].unshift(c);return c;}throw Error('Missing tutorial card: '+id);}
-function tutorialRandom(){const s=engine.s,r=s?.roll;if(r?.kind==='tipoff')return (r.side===0?4.5:2.5)/6;if(guidedLesson?.course!==2)return Math.random();const k=lessonTwoKey(),values=k==='midRoll'?[2,3]:k==='reboundRoll'?[1,3,1]:k==='blockRoll'?[5,1]:k==='threeRoll'?[2,4,6,5]:k==='stealRoll'?[4,6,5]:k==='tankRoll'?[3]:null;return values?((values[r?.values.length||0]??4)-0.5)/6:Math.random();}
+function tutorialRandom(){const s=engine.s,r=s?.roll;if(r?.kind==='tipoff')return (r.side===0?4.5:2.5)/6;if(guidedLesson?.course!==2)return Math.random();const k=lessonTwoKey(),values=k==='midRoll'?[2,3]:k==='reboundRoll'?[1,3,1]:k==='blockRoll'?[5,1]:k==='threeRoll'?[2,4,6,5]:k==='freeRoll'?[4]:k==='stealRoll'?[4,6,5]:k==='tankRoll'?[3]:null;return values?((values[r?.values.length||0]??4)-0.5)/6:Math.random();}
 function startLessonTwo(){
  if(guidedLesson?.course===2)showLobby();
  if(!guidedLesson){startLessonOne();engine.dispatch({type:'ack'});engine.dispatch({type:'roll'});engine.dispatch({type:'confirm'});engine.dispatch({type:'roll'});engine.dispatch({type:'confirm'});}
@@ -4375,7 +4412,7 @@ function lessonTwoPolicy(key,targets){
 }
 function lessonTwoData(){const [key,zhTitle,zhText,targets=[],action=false]=LESSON_TWO_STEPS[guidedLesson.step],[enTitle,enText]=LESSON_TWO_EN[key],title=tr(zhTitle,enTitle);let text=tr(zhText,enText);if(key==='complete'&&guidedLesson.rewardAlreadyClaimed)text=text.replace(tr('<< 這是 10包 第一彈球員卡包 作為獎勵 >>','<< Your reward: 10 First Edition Player Packs >>'),tr('（首次完成獎勵已領取）','(First-completion reward already received)'));const policy=lessonTwoPolicy(key,targets),waitForConfirm=LESSON_AUTO_CONFIRM.has(key)&&guidedLesson.autoActionDone;
  const roll=engine.s.roll;
- if(key==='blockExplain'&&roll?.kind==='block')text=tr('對手宣告出手後，防守方可嘗試封阻。\n本次判定：能量2，擲骰','After a shot is declared, DEF can attempt a Block.\nThis check: Energy 2, Dice ')+roll.dice+tr('次，需有效',' / Target ')+roll.target+tr('次。\n成功：轉換球權。\n失敗：此次出手擲骰數+1。',' successes.\nSuccess: change possession.\nFailure: this shot rolls +1 die.');
+ if(key==='blockExplain'&&roll?.kind==='block')text=tr('對手宣告出手後，防守方可嘗試封阻。\n本次判定：能量2，擲骰','After a shot is declared, DEF can attempt a Block.\nThis check: Energy 2, Dice ')+roll.dice+tr('次，需有效',' / Target ')+roll.target+tr('次。\n成功：轉換球權。\n失敗：不增加出手骰數；未中依出手類型罰2或3球，命中加罰1球。',' successes.\nSuccess: change possession.\nFailure: no extra shot die. A miss awards 2 or 3 free throws; a make awards 1 bonus free throw.');
  if(key==='stealStart'&&roll?.kind==='steal')text=tr('本次判定：可擲','This check: Dice ')+roll.dice+tr('顆骰子，需',' / Target ')+roll.target+tr('次有效。\n按「開始擲骰」，接著依指示操作。',' successes.\nClick Start Rolling, then follow the guide.');
  if(key==='reboundExplain'&&roll?.kind==='rebound')text=tr('出手未命中時，雙方爭搶籃板。\n本次由防守方擲骰','After a missed shot, the teams compete for the rebound.\nThis DEF roll has Dice ')+roll.dice+tr('次，需有效',' / Target ')+roll.target+tr('次。\n若未達所需有效數，我方出手者搶到進攻籃板並繼續持球。',' successes.\nIf the target is not reached, our shooter gets the OFF rebound and keeps the ball.');
  if(key==='jonikAI'&&modalOpen)text=tr('可先查看N.Jonik的技能。\n關閉這個球員詳情視窗後，對手會繼續發動技能。','You can inspect N.Jonik’s skills.\nClose this player details window to let OPP use the skill.');
@@ -4393,7 +4430,7 @@ function lessonTwoContinue(){const k=lessonTwoKey();if(!k||lessonTwoData().actio
  lessonTwoGo(LESSON_TWO_STEPS[guidedLesson.step+1][0]);render();scheduleAI();
 }
 function lessonTwoAllowed(action){const k=lessonTwoKey(),s=engine.s;if(guidedLesson.autoActionDone||k==='blockRoll'&&!guidedLesson.rollStarted)return false;
- const expected={mid:['shot',0,'mid'],brokenAI:['card',1,'broken-dice'],midRoll:['roll'],midResult:['confirm'],reboundRoll:['roll'],reboundResult:['confirm'],dimeTarget:['skill',0,'dime'],headbandAI:['card',1,'white-headband'],shooterTarget:['skill',0,'shooter'],blockAI:['block',1],blockRoll:['roll'],blockResult:['confirm'],threeRoll:['roll'],threeResult:['confirm'],jonikAI:['skill',1,'ultimate-versatility'],handsTarget:['card',0,'hands-up'],passAI:['pass',1],steal:['steal',0],stealRoll:['roll'],stealResult:['confirm'],tactic:['card',0,'perimeter-offense'],tacticSkip:['skip',1],tankTarget:['skill',0,'tank'],tankSkip:['skip',1],tankRoll:['roll'],tankResult:['confirm']}[k];
+ const expected={mid:['shot',0,'mid'],brokenAI:['card',1,'broken-dice'],midRoll:['roll'],midResult:['confirm'],reboundRoll:['roll'],reboundResult:['confirm'],dimeTarget:['skill',0,'dime'],headbandAI:['card',1,'white-headband'],shooterTarget:['skill',0,'shooter'],blockAI:['block',1],blockRoll:['roll'],blockResult:['confirm'],threeRoll:['roll'],threeResult:['confirm'],freeRoll:['roll'],freeResult:['confirm'],jonikAI:['skill',1,'ultimate-versatility'],handsTarget:['card',0,'hands-up'],passAI:['pass',1],steal:['steal',0],stealRoll:['roll'],stealResult:['confirm'],tactic:['card',0,'perimeter-offense'],tacticSkip:['skip',1],tankTarget:['skill',0,'tank'],tankSkip:['skip',1],tankRoll:['roll'],tankResult:['confirm']}[k];
  if(!expected||action.type!==expected[0]||expected[1]!==undefined&&action.side!==expected[1])return false;
  const id=action.type==='skill'?action.skillId:action.type==='card'?s.hands[action.side].find(c=>c.uid===action.uid)?.id:action.kind;
  if(expected[2]&&id!==expected[2])return false;
@@ -4402,9 +4439,9 @@ function lessonTwoAllowed(action){const k=lessonTwoKey(),s=engine.s;if(guidedLes
 }
 const LESSON_AUTO_CONFIRM=new Set(['brokenAI','headbandAI','blockAI','passAI','tankSkip']);
 function lessonTwoAfterAction(action){const k=lessonTwoKey(),s=engine.s;
- const next={mid:'response',brokenAI:'brokenOpen',midResult:'reboundExplain',reboundResult:'dimeOpen',dimeTarget:'headbandAI',headbandAI:'shooterOpen',shooterTarget:'blockAI',blockAI:'blockExplain',blockResult:'threeRoll',threeResult:'firstScore',jonikAI:'jonikRead',handsTarget:'passAI',passAI:'zero',steal:'stealStart',stealResult:'stealExplain',tactic:'tacticSkip',tacticSkip:'tacticOpen',tankTarget:'tankSkip',tankSkip:'tankRoll',tankResult:'complete'}[k];
+ const next={mid:'response',brokenAI:'brokenOpen',midResult:'reboundExplain',reboundResult:'dimeOpen',dimeTarget:'headbandAI',headbandAI:'shooterOpen',shooterTarget:'blockAI',blockAI:'blockExplain',blockResult:'threeRoll',threeResult:'freeExplain',freeResult:'firstScore',jonikAI:'jonikRead',handsTarget:'passAI',passAI:'zero',steal:'stealStart',stealResult:'stealExplain',tactic:'tacticSkip',tacticSkip:'tacticOpen',tankTarget:'tankSkip',tankSkip:'tankRoll',tankResult:'complete'}[k];
  if(next){if(LESSON_AUTO_CONFIRM.has(k)){guidedLesson.autoActionDone=true;return;}lessonTwoGo(next);return;}
- if(action.type==='roll'&&s.phase==='rollresult'){const result={midRoll:'midResult',reboundRoll:'reboundResult',blockRoll:'blockResult',threeRoll:'threeResult',stealRoll:'stealResult',tankRoll:'tankResult'}[k];if(result)lessonTwoGo(result);}
+ if(action.type==='roll'&&s.phase==='rollresult'){const result={midRoll:'midResult',reboundRoll:'reboundResult',blockRoll:'blockResult',threeRoll:'threeResult',freeRoll:'freeResult',stealRoll:'stealResult',tankRoll:'tankResult'}[k];if(result)lessonTwoGo(result);}
 }
 function scheduleLessonTwo(){const k=lessonTwoKey(),s=engine.s;if(!inGame||modalOpen||pendingTarget||!s||s.finished||guidedLesson.autoActionDone||k==='blockRoll'&&!guidedLesson.rollStarted)return;
  let action;if(['reboundRoll','blockRoll'].includes(k)&&s.phase==='rolling')action={type:'roll'};
@@ -4518,7 +4555,7 @@ function legacyCheck(c,kind='shot',shotKind=engine.s.shot?.kind||'mid'){
  if(kind==='block'&&engine.s.roll?.rejection)history.push(tr('全力封蓋：Target −1','Full Rejection: Target −1'));
  if(kind==='rebound'&&hasPassive(engine.player(1-engine.s.offense,engine.s.defender),'cleveland-blue-collar'))history.push(tr('克城藍領：Dice +1','Cleveland Blue Collar: Dice +1'));
  if(kind==='rebound'&&engine.player(1-engine.s.offense,engine.s.defender).active?.id==='switch')history.push(tr('藍領：擲骰數+1','Blue Collar: Dice +1'));
- if(kind==='shot'){const aura=engine.s.tactics[engine.s.offense].off;if(aura?.id==='small-ball'&&engine.s.shot?.kind==='three')history.push(tr('小球戰術：三分骰面1有效（先結算戰術）','Small Ball: 1 counts on 3PT rolls (tactics resolve first)'));const tacticDice=engine.shotTacticBonus(engine.s.offense,engine.s.holder,shotKind);if(tacticDice)history.push(tr('戰術修正：','Tactic modifier: ')+'Dice '+(tacticDice>0?'+':'')+tacticDice);}if(kind==='shot'&&engine.s.shot?.bonus)history.push(tr('封阻失敗：此次出手＋1骰','Block failed: shot Dice +1'));
+ if(kind==='shot'){const aura=engine.s.tactics[engine.s.offense].off;if(aura?.id==='small-ball'&&engine.s.shot?.kind==='three')history.push(tr('小球戰術：三分骰面1有效（先結算戰術）','Small Ball: 1 counts on 3PT rolls (tactics resolve first)'));const tacticDice=engine.shotTacticBonus(engine.s.offense,engine.s.holder,shotKind);if(tacticDice)history.push(tr('戰術修正：','Tactic modifier: ')+'Dice '+(tacticDice>0?'+':'')+tacticDice);}if(kind==='shot'&&engine.s.shot?.blockFoul)history.push(tr('封阻失敗：未中獲對應罰球、命中加罰1球；只取最高罰球數','Failed Block: shooting free throws on a miss, 1 bonus FT on a make; highest award only'));
  if(kind==='shot'&&engine.s.shot?.kind==='three'&&engine.player(engine.s.offense,engine.s.holder).tags?.some(t=>t.id==='poor-3pt'))history.push(tr('拙劣三分：需有效數+1','Poor 3PT: Target +1'));
  if(kind==='shot'&&engine.s.shot?.kind==='paint'&&engine.s.tactics[engine.s.offense].off?.effects?.paintFace)history.push(tr('突破禁區：骰面3有效（先結算戰術）','Attack the Paint: 3 counts (tactics resolve first)'));
  if(kind==='shot'){for(const effect of engine.s.nextShots[engine.s.offense])history.push(actionName(effect.id)+': '+(effect.dice?'Dice '+(effect.dice>0?'+':'')+effect.dice:(effect.faces||[effect.face].filter(Boolean)).join(', ')+(effect.freeThrow?tr('命中追加1罰球','1 Free Throw if made'):' '+(effect.valid?tr('有效','counts'):tr('無效','does not count')))+(effect.invalidFaces?' / '+effect.invalidFaces.join(', ')+tr('無效',' do not count'):'')));}
@@ -4669,7 +4706,7 @@ function synchronizeLegacyState(){
 function legacyResultLabel(){const s=engine.s,r=s.roll;if(r.kind==='tipoff')return tr('確認跳球結果','Confirm Tip-off Results');
  if(r.kind==='free')return tr('確認罰球結果・下一球權','Confirm Free Throws · Next Possession');if(r.kind==='shot'&&!r.success){const count=(s.shot.skillId==='new-hope'?3:s.shot.skillId==='draw-the-foul'?2:0)+(s.itemUpdate?.home[s.offense]||0)*SHOTS[s.shot.kind].points+(hasPassive(engine.player(1-s.offense,s.defender),'the-bad-guy')?SHOTS[s.shot.kind].points:0);if(count)return tr('未命中・進行','Missed · Take ')+count+tr('次罰球',' Free Throws');}
  if(r.kind==='shot'&&r.success&&s.nextShots[s.offense].some(e=>e.freeThrow))return tr('命中・追加罰球','Made · Free Throw');
- if(r.kind==='shot')return r.success?tr('命中・下一球權','Made · Next possession'):tr('未命中・進入防守籃板判定','Missed · DEF Rebound');
+ if(r.kind==='shot'){const p=engine.s.shot;if(r.success&&p&&hasPassive(engine.player(p.side,p.player),'eighty-one-points-14')&&engine.s.stats[p.side][p.player].fgm+1>=14)return tr('命中・達成勝利條件','Made · Victory condition');const rows=engine.freeThrowCandidates(!!r.success),n=Math.max(0,...rows.map(x=>x.count));if(n)return r.success?tr('命中・加罰'+n+'球','Made · '+n+' bonus FT'):tr('未命中・罰球'+n+'球','Missed · '+n+' FT');return r.success?tr('命中・下一球權','Made · Next possession'):tr('未命中・進入防守籃板判定','Missed · DEF Rebound');}
  if(r.kind==='block')return r.success?tr('封阻成功・下一球權','Block successful · Next possession'):tr('封阻失敗・進行出手判定','Block failed · Resolve shot');
  if(r.kind==='steal')return r.success?tr('抄截成功・轉換球權','Steal successful · Switch possession'):tr('抄截失敗・繼續比賽','Steal failed · Continue');
  return battleRollOutcomeText(r)+tr('・確認',' · Confirm');
@@ -5666,6 +5703,15 @@ currentRollEffectHints=function(entry,side,index){const s=engine.s,r=s.roll;if(e
  };
 })();
 
+(function installFreeThrowSourceUI(){
+ const oldEntries=activeEffectEntries,oldHints=rollEffectHints,oldFeedback=btcgRollFeedbackHTML;
+ const oldCurrent=currentRollEffectHints;currentRollEffectHints=function(entry,side,index){const s=engine.s;if(entry.key==='block-foul'&&s.roll&&['shot','free'].includes(s.roll.kind)&&side===s.offense&&index===s.holder)return rollEffectHints(entry,side,index);return oldCurrent(entry,side,index);};
+ const sourceName=row=>row.id==='block-foul'?tr('封阻失敗罰球','Failed Block shooting foul'):cardDefinition(row.id)?actionName(row.id):playerAbilityDefinition(row.id)?tr(...playerAbilityDefinition(row.id).name):row.id;
+ activeEffectEntries=function(side){const entries=oldEntries(side),s=engine.s,p=s?.shot;if(p?.blockFoul&&side===1-p.side)entries.push({key:'block-foul',name:tr('封阻失敗罰球','Failed Block shooting foul'),desc:tr('未命中依出手類型罰2或3球；命中加罰1球。同次出手的罰球只取最高值。','A miss awards 2 or 3 free throws by shot type; a make awards 1 bonus free throw. Use the highest award for this shot.'),targets:[{side:p.side,index:p.player}],ownerSide:side,detail:tr('僅此次出手','This shot only')});return entries;};
+ rollEffectHints=function(entry,side,index){if(entry.key==='block-foul')return[{type:'text',value:tr('未中→對應罰球／命中→加罰1；取最高','Miss → shooting FTs / Make → 1 bonus FT; maximum only'),valid:true,scope:''}];return oldHints(entry,side,index);};
+ btcgRollFeedbackHTML=function(r){if(r?.kind==='free'&&r.freeThrowAwardRows?.length){const rows=r.freeThrowAwardRows,n=engine.s.shot?.freeTotal||Math.max(...rows.map(x=>x.count));return '<section class="btcg-roll-feedback"><h3>'+tr('罰球來源：同次出手只取最高值','Free-throw awards: highest count only')+'</h3><ul>'+rows.map(row=>'<li>'+esc(sourceName(row))+'：'+row.count+tr(' 次',' FT')+(row.count===n?' ✓':'')+'</li>').join('')+'</ul><strong>'+tr('本次裁定罰球：','Awarded free throws: ')+n+'</strong>'+(r.dice!==n?'<p>'+tr(r.banana?'香蕉額外增加1骰，最終可擲：':'另有判定骰數修正，最終可擲：',r.banana?'Banana adds 1 separate roll die; final dice: ':'After separate roll modifiers, final dice: ')+r.dice+'</p>':'')+'</section>';}return oldFeedback(r);};
+})();
+
 function cancelBackgroundAI(){if(backgroundAIJob){const job=backgroundAIJob;backgroundAIJob=null;clearTimeout(job.timer);job.resolve(null);}if(backgroundAIWorker){backgroundAIWorker.terminate();backgroundAIWorker=null;}}
 function createBackgroundAIWorker(){
  const rules=document.getElementById('rulesEngine').textContent,ui=document.getElementById('testUI').textContent;
@@ -5879,4 +5925,287 @@ body.lesson-active #gameScreen #centerPanel#centerPanel .combat-feed-wrap{min-he
 body.lesson-active #gameScreen #centerPanel#centerPanel #combatFeed{min-height:100px!important}
 }
 </style>
+
+<style id="btcg-rules-guide-style">#battleRules{display:none!important}
+#rulesGuideLauncher{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));z-index:32;display:flex;align-items:center;gap:8px;min-height:46px;padding:11px 17px;border:1px solid #d9af60;border-radius:999px;background:#182334;color:#ffe1a4;font:700 14px/1.2 system-ui,sans-serif;box-shadow:0 6px 24px #0007}
+#rulesGuideLauncher[hidden],#rulesGuideRoot[hidden]{display:none!important}
+#rulesGuideRoot{position:fixed;inset:0;z-index:20000;background:#040a15c9;backdrop-filter:blur(7px);display:grid;place-items:center;padding:24px}
+#rulesGuideDialog{width:min(1120px,100%);height:min(790px,calc(100dvh - 48px));display:flex;flex-direction:column;overflow:hidden;background:#111a2a;border:1px solid #627088;border-radius:20px;color:#edf2fc;box-shadow:0 24px 90px #000a;font-family:system-ui,-apple-system,"Noto Sans TC",sans-serif;text-align:left}
+#rulesGuideDialog *{box-sizing:border-box}
+#rulesGuideDialog .rg-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 24px;border-bottom:1px solid #344158;background:#182337;flex:none}
+#rulesGuideDialog .rg-head h2{margin:0;font-size:23px;line-height:1.25;color:#ffe0a0}
+#rulesGuideDialog .rg-head p{margin:5px 0 0;color:#b7c5dc;font-size:13px;line-height:1.5}
+#rulesGuideDialog button{font-family:inherit;touch-action:manipulation}
+#rulesGuideDialog .rg-close{min-height:42px;min-width:42px;padding:8px 13px;flex:none;border:1px solid #65738a;border-radius:10px;background:#24334a;color:#fff;font-size:14px}
+#rulesGuideDialog .rg-body{display:grid;grid-template-columns:228px minmax(0,1fr);min-height:0;flex:1}
+#rulesGuideDialog .rg-nav{min-width:0;overflow-y:auto;overscroll-behavior:contain;padding:16px 12px;background:#0c1422;border-right:1px solid #344158;scrollbar-color:#61718a #111b2b}
+#rulesGuideDialog .rg-tab{display:flex;align-items:flex-start;gap:10px;width:100%;margin:0 0 7px;padding:14px 12px;border:1px solid transparent;border-radius:11px;background:transparent;color:#bdc9dc;text-align:left;font-size:15px;line-height:1.5;white-space:normal;overflow-wrap:anywhere}
+#rulesGuideDialog .rg-tab svg{width:20px;height:20px;margin-top:2px;flex:none;color:#9bb5d8}
+#rulesGuideDialog .rg-tab[aria-selected="true"]{border-color:#a98b51;background:#302b24;color:#ffe0a0;font-weight:750}
+#rulesGuideDialog .rg-tab[aria-selected="true"] svg{color:#ffd47c}
+#rulesGuideDialog :focus-visible{outline:3px solid #85c5ff;outline-offset:3px}
+#rulesGuideDialog .rg-content{min-width:0;overflow-y:auto;overscroll-behavior:contain;padding:25px 28px 35px;scrollbar-color:#7589a6 #111b2b;line-height:1.8}
+#rulesGuideDialog .rg-content h3{margin:0 0 8px;font-size:25px;line-height:1.4;color:#fff0c5}
+#rulesGuideDialog .rg-lead{margin:0 0 20px;font-size:16px;color:#cbd8ed}
+#rulesGuideDialog .rg-content h4{font-size:17px;color:#f5d596;margin:22px 0 9px}
+#rulesGuideDialog .rg-content p{margin:7px 0 12px;overflow-wrap:anywhere}
+#rulesGuideDialog .rg-figure{margin:18px 0;padding:18px;border:1px solid #3d506e;border-radius:15px;background:#19263c}
+#rulesGuideDialog .rg-figure>svg{width:100%;max-height:250px;display:block}
+#rulesGuideDialog .rg-figure figcaption{margin-top:12px;font-size:13px;line-height:1.6;color:#b8c9e1;text-align:center}
+#rulesGuideDialog .rg-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0}
+#rulesGuideDialog .rg-card{min-width:0;padding:15px;border:1px solid #3b4b65;border-radius:12px;background:#18243a}
+#rulesGuideDialog .rg-card h4{margin:0 0 7px;font-size:16px}
+#rulesGuideDialog .rg-card p{font-size:14px;margin:5px 0 0;line-height:1.75}
+#rulesGuideDialog .rg-note{border-left:3px solid #e5b966;border-radius:0 10px 10px 0;padding:12px 15px;background:#302b22;color:#f8dfac;font-size:14px;margin:16px 0;line-height:1.8}
+#rulesGuideDialog .rg-flow{display:flex;align-items:stretch;gap:8px;flex-wrap:wrap;margin:15px 0}
+#rulesGuideDialog .rg-flow>span{flex:1;min-width:96px;text-align:center;padding:12px 8px;border:1px solid #44628b;border-radius:10px;background:#1b3050;color:#dbeaff;font-weight:700;font-size:14px}
+#rulesGuideDialog .rg-flow>i{align-self:center;font-style:normal;color:#e7bc6c}
+#rulesGuideDialog .rg-dice{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:9px 0}
+#rulesGuideDialog .rg-die-group{text-align:center;font-size:13px;color:#d3deed}
+#rulesGuideDialog .rg-die{width:46px;height:46px;display:block;margin:0 auto 5px}
+#rulesGuideDialog .rg-example{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin:14px 0}
+#rulesGuideDialog .rg-example>svg:not(.rg-die){width:48px;height:48px;color:#ffd688}
+#rulesGuideDialog .rg-example strong{padding:7px 13px;border:1px solid #4eab7f;border-radius:9px;background:#183e31;color:#adf1cc}
+#rulesGuideDialog .rg-table-wrap{max-width:100%;overflow-x:auto;border:1px solid #3c4c67;border-radius:12px;margin:14px 0}
+#rulesGuideDialog table{width:100%;border-collapse:collapse;background:transparent;font-size:14px}
+#rulesGuideDialog th,#rulesGuideDialog td{padding:11px 12px;border-bottom:1px solid #34445f;text-align:left;vertical-align:top;white-space:normal;overflow-wrap:anywhere;background:transparent;color:inherit}
+#rulesGuideDialog th{color:#ffdf9e;background:#1d2d46;font-weight:750}
+#rulesGuideDialog tr:last-child td{border-bottom:0}
+#rulesGuideDialog .rg-shot-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:14px 0}
+#rulesGuideDialog .rg-shot{padding:16px 12px;text-align:center;border:1px solid #4c6387;border-radius:13px;background:#182d48}
+#rulesGuideDialog .rg-shot>svg{width:36px;height:36px;color:#ffd27e}
+#rulesGuideDialog .rg-shot h4{margin:5px 0;font-size:17px}
+#rulesGuideDialog .rg-shot p{font-size:13px;margin:3px 0}
+#rulesGuideDialog .rg-points{font-size:31px;font-weight:850;color:#ffd686;line-height:1.5}
+#rulesGuideDialog .rg-branches{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+#rulesGuideDialog .rg-branches>div{padding:15px;border-radius:12px;background:#12372f;border:1px solid #388c70;text-align:center}
+#rulesGuideDialog .rg-branches>div+div{background:#352a24;border-color:#ad8058}
+#rulesGuideDialog .rg-branches strong{display:block;font-size:21px;color:#ffe0a0}
+#rulesGuideDialog .rg-branches p{margin:6px 0 0;font-size:14px}
+#rulesGuideDialog .rg-slots{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+#rulesGuideDialog .rg-slot{padding:18px;border:2px dashed #7b9ecb;border-radius:12px;text-align:center;color:#cfe4ff;background:#182c49}
+#rulesGuideDialog .rg-slot svg{width:36px;height:36px}
+#rulesGuideDialog .rg-slot+div{border-color:#76baa7;background:#15332e;color:#c1eee1}
+#rulesGuideDialog .rg-cardface{padding:17px;border:1px solid #d0b27a;border-radius:12px;background:#f4e9d0;color:#182335;line-height:1.6}
+#rulesGuideDialog .rg-cardface h4{color:#182335;margin:0 0 8px}
+#rulesGuideDialog .rg-cardface small{display:block;color:#505f72;margin-bottom:9px}
+#rulesGuideDialog .rg-cardface p{font-size:14px;white-space:pre-line}
+#rulesGuideDialog .rg-tile-grid{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:5px;margin:15px 0}
+#rulesGuideDialog .rg-tile-grid span{height:32px;background:#4486bd;border:1px solid #98caff;border-radius:4px}
+#rulesGuideDialog .rg-tile-grid span.item{background:#c79649;border-color:#f2d092}
+#rulesGuideDialog .rg-key{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:#cfdbed}
+#rulesGuideDialog .rg-key b{display:inline-block;width:12px;height:12px;margin-right:5px;border-radius:3px;background:#4486bd}
+#rulesGuideDialog .rg-key b.item{background:#c79649}
+#rulesGuideDialog .rg-checklist{padding-left:21px;margin:10px 0}
+#rulesGuideDialog .rg-checklist li{margin:9px 0;padding-left:2px}
+#rulesGuideDialog .rg-status{display:inline-block;margin:4px 0;padding:2px 9px;border-radius:20px;background:#174537;color:#a4e2c3;font-size:12px;font-weight:750}
+#rulesGuideDialog .rg-status.soon{background:#2c3343;color:#bdc7d7}
+@media(max-width:700px){
+ #rulesGuideRoot{padding:8px}
+ #rulesGuideDialog{height:calc(100dvh - 16px);border-radius:14px}
+ #rulesGuideDialog .rg-head{padding:14px;gap:8px}
+ #rulesGuideDialog .rg-head h2{font-size:19px}
+ #rulesGuideDialog .rg-head p{font-size:12px}
+ #rulesGuideDialog .rg-body{grid-template-columns:112px minmax(0,1fr)}
+ #rulesGuideDialog .rg-nav{padding:9px 6px}
+ #rulesGuideDialog .rg-tab{display:block;padding:11px 8px;font-size:13px;line-height:1.55;margin-bottom:4px}
+ #rulesGuideDialog .rg-tab svg{display:block;width:19px;height:19px;margin:0 0 5px}
+ #rulesGuideDialog .rg-content{padding:18px 13px 25px}
+ #rulesGuideDialog .rg-content h3{font-size:20px}
+ #rulesGuideDialog .rg-lead{font-size:14px}
+ #rulesGuideDialog .rg-cards,#rulesGuideDialog .rg-shot-grid,#rulesGuideDialog .rg-slots,#rulesGuideDialog .rg-branches{grid-template-columns:minmax(0,1fr)}
+ #rulesGuideDialog .rg-figure{padding:10px}
+ #rulesGuideDialog .rg-content h4{font-size:16px}
+ #rulesGuideDialog table{font-size:12px}
+ #rulesGuideDialog th,#rulesGuideDialog td{padding:9px 7px}
+ #rulesGuideDialog .rg-dice{gap:7px}
+ #rulesGuideDialog .rg-die{width:38px;height:38px}
+ #rulesGuideDialog .rg-tile-grid{gap:3px}
+ #rulesGuideDialog .rg-tile-grid span{height:25px}
+ #rulesGuideLauncher{right:12px;bottom:max(12px,env(safe-area-inset-bottom));padding:11px 14px;font-size:13px}
+}
+@media(prefers-reduced-motion:reduce){#rulesGuideRoot{backdrop-filter:none}}
+</style>
+<button type="button" id="rulesGuideLauncher" aria-haspopup="dialog" aria-controls="rulesGuideDialog">ⓘ 遊戲規則</button><div id="rulesGuideRoot" hidden></div>
+<script id="btcg-rules-guide">(()=>{
+'use strict';
+const root=document.getElementById('rulesGuideRoot'),launcher=document.getElementById('rulesGuideLauncher');
+const t=(zh,en)=>tr(zh,en),s=x=>esc(String(x));
+let session=null,selected='basics';
+const topics=[['basics','籃球及遊戲規則','Basketball & BTCG','🏀'],['flow','遊戲流程','Match flow','↔'],['dice','擲骰判定','Dice checks','⚄'],['score','出手得分與助攻','Scoring & assists','◎'],['defense','籃板/抄截/封阻','Rebounds / Steals / Blocks','🛡'],['cards','戰術與道具卡','Tactics & items','▣'],['skills','球員技能','Player abilities','★'],['deck','牌組編成規則','Deck building','▤'],['modes','各種模式說明','Modes','🏆']];
+const p=(zh,en)=>'<p>'+s(t(zh,en))+'</p>';
+const note=(zh,en)=>'<div class="rg-note">'+s(t(zh,en))+'</div>';
+const box=(zh,en,a,b)=>'<section class="rg-card"><h4>'+s(t(zh,en))+'</h4>'+p(a,b)+'</section>';
+const flow=(zh,en)=>'<div class="rg-flow">'+t(zh,en).map(x=>'<span>'+s(x)+'</span>').join('<b aria-hidden="true">→</b>')+'</div>';
+const table=(heads,rows)=>'<div class="rg-table-wrap"><table><thead><tr>'+heads.map(x=>'<th>'+s(t(...x))+'</th>').join('')+'</tr></thead><tbody>'+rows.map(row=>'<tr>'+row.map(x=>'<td>'+s(Array.isArray(x)?t(...x):x)+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
+function die(n,valid){const dots={1:[[20,20]],2:[[11,11],[29,29]],3:[[11,11],[20,20],[29,29]],4:[[11,11],[29,11],[11,29],[29,29]],5:[[11,11],[29,11],[20,20],[11,29],[29,29]],6:[[11,10],[29,10],[11,20],[29,20],[11,30],[29,30]]};return '<svg class="rg-die" viewBox="0 0 40 40" role="img" aria-label="'+n+' '+s(t(valid?'有效':'無效',valid?'success':'failure'))+'"><rect x="1" y="1" width="38" height="38" rx="8" fill="'+(valid?'#16715f':'#364156')+'" stroke="'+(valid?'#65e5bd':'#778197')+'"/>'+dots[n].map(([x,y])=>'<circle cx="'+x+'" cy="'+y+'" r="3" fill="white"/>').join('')+'</svg>';}
+function court(){return '<figure class="rg-figure"><svg viewBox="0 0 500 240" role="img" aria-label="'+s(t('五個場上位置：PG、SG、SF、PF、C；金色表示持球者。','Five on-court positions: PG, SG, SF, PF and C. Gold marks the ball handler.'))+'"><rect x="2" y="2" width="496" height="236" rx="14" fill="#182b40" stroke="#91a3b8"/><path d="M180 2V85H320V2M210 2V45H290V2M70 2V40Q250 320 430 40V2" fill="none" stroke="#6d849b" stroke-width="2"/><circle cx="250" cy="28" r="10" fill="none" stroke="#ffc66a" stroke-width="3"/>'+[['PG',250,192],['SG',92,143],['SF',408,143],['PF',156,68],['C',302,62]].map(([name,x,y],i)=>'<circle cx="'+x+'" cy="'+y+'" r="24" fill="'+(i===0?'#e7b259':'#244f70')+'" stroke="#d5e2ee"/><text x="'+x+'" y="'+(y+6)+'" text-anchor="middle" fill="'+(i===0?'#172238':'white')+'" font-size="17" font-weight="700">'+name+'</text>').join('')+'</svg><figcaption>'+s(t('每個位置各一位；金色示意持球者。比賽中也可從持球標記與外框找到他。','One player per position. Gold illustrates the ball handler; look for the possession marker and highlighted border during a match.'))+'</figcaption></figure>';}
+function article(key){switch(key){
+case 'basics':return [t('把籃球的攻守，變成你一手能掌握的卡牌對決。','Turn basketball offense and defense into a card battle you control.'),court()+p('目標很簡單：比賽結束時，比對手多得分。你負責安排五位球員，再靠傳球、技能、戰術和道具，創造更好的出手機會。','The goal is simple: finish with more points. Field five players, then use passes, abilities, tactics and items to create better shots.')+table([['位置','Position'],['常見角色','Typical role']],[['PG',['控球、串連隊友','Handle the ball and organize']],['SG',['外線得分','Perimeter scoring']],['SF',['側翼攻守','Two-way wing']],['PF',['內線協作','Interior support']],['C',['籃下與護框','Paint play and rim protection']]])+note('位置只是幫你認識球員。實際強項要看能力值與技能；點球員卡，就能查看完整內容。','Positions are a starting point. Stats and abilities determine actual strengths. Select a player card to read the details.')];
+case 'flow':return [t('輪到你時，先做一個選擇；再看對手怎麼接招。','Choose an action on your turn, then see how your opponent responds.'),flow(['開場擲骰','輪流行動','宣告出手','防守回應','結算／籃板'],['Opening roll','Take turns','Declare shot','Defense responds','Resolve / rebound'])+p('開場雙方各擲一骰，較大者先攻，平手重擲。標準賽打四節，每節雙方共用10次球權額度；不是每隊各10次。第一、四節由開場先攻方開球，第二、三節換另一方。平手就進入每次3球權的延長賽。','Each side rolls one die for opening possession; ties reroll. A standard match has four quarters, with 10 shared possessions per quarter—not 10 per team. The opening winner starts quarters one and four; the other side starts two and three. Ties lead to overtime periods of three shared possessions.')+'<div class="rg-cards">'+box('你的行動','Your action','打一道具／戰術、使用技能、傳球、抄截，或略過。普通傳球基礎花費1能量。宣告出手後，防守方通常有一次回應機會，可用卡、技能、封阻或略過。','Play a card, use an ability, pass, steal, or skip. A normal pass costs 1 energy before modifiers. After a shot is declared, the defense normally gets one response: a card, ability, block, or skip.')+box('能量與抽牌','Energy and draws','起手5張，上限10張；超過上限的牌留在牌庫。能量起始10，攻守交換時雙方重設為10；加成可暫時超過10。牌庫用完會洗回棄牌。','Start with five cards; the hand limit is ten. Excess draws stay in the deck. Both sides start at 10 energy and reset to 10 when possession changes sides; bonuses can temporarily exceed 10. An empty deck reshuffles the discard pile.')+'</div>'+table([['發生什麼','Event'],['球權與補給','Possession and resources']],[[['進球、防守籃板、封阻成功','Basket, defensive rebound, successful block'],['通常消耗1次共用球權，雙方各抽2張；換節的抽牌不會重複多算。','Normally spend one shared possession and draw two each; quarter-transition draws do not double up.']],[['抄截成功／進攻連略過3次','Successful steal / three offensive skips'],['交換攻守，但不扣共用球權、也不額外抽牌；換邊仍重設能量。','Change sides without spending a shared possession or drawing extra cards. Energy still resets.']],[['進攻籃板','Offensive rebound'],['繼續進攻，不扣球權、不補能量、不額外抽牌。','Continue the attack without spending a possession, refilling energy, or drawing extra cards.']]])+note('「球換邊」和「消耗球權次數」是兩回事。技能也可能改變行動次數；請以當下畫面提示為準。','Changing sides and spending a shared possession are different things. Abilities can also change the number of actions—follow the current prompt.')];
+case 'dice':return [t('不是把骰子加總，而是數一數：有幾顆擲中有效骰面？','Do not add the dice. Count how many land on a valid face.'),'<figure class="rg-figure"><div class="rg-dice">'+[1,2,3,4,5,6].map(n=>'<div class="rg-die-group">'+die(n,n>=4)+'<small>'+s(t(n>=4?'✓ 有效':'× 無效',n>=4?'✓ Valid':'× Invalid'))+'</small></div>').join('')+'</div><figcaption>'+s(t('一般判定基礎有效骰面為4、5、6；受壓迫出手只有6。卡片與技能可能改變它。','Normal checks start with faces 4, 5 and 6 valid. A pressured shot starts with only 6. Cards and abilities can change these.'))+'</figcaption></figure>'+flow(['擲骰數：擲幾顆','有效骰面：哪些算成功','需有效數：要幾顆成功'],['Dice: how many rolls','Valid faces: which count','Target: successes needed'])+'<div class="rg-example">'+die(2,false)+die(4,true)+die(6,true)+p('例如：擲3顆、需2顆有效。擲出2、4、6，就是2顆有效，判定成功！','Example: roll three dice and need two successes. Rolling 2, 4 and 6 gives two successes: you pass!')+'</div>'+p('一般出手比較出手者進攻與防守者防守：每相差完整100，較高或較低會讓出手擲骰數增加或減少1。抄截、封阻則比較防守方防守與持球者進攻；籃板不靠這個能力差。','Normal shots compare shooter offense against defender defense: every full 100 points of difference adds or removes one die. Steals and blocks compare defender defense against ball-handler offense. Rebounds do not use that stat difference.')+note('擲骰數可能降到0；若仍需要有效骰，就會失敗。有效數降到0通常直接成功，但卡片若明寫「至少1骰」等條件，就仍要符合。罰球有獨立規則，一般出手加成不會自動套用。','Dice can fall to zero; a positive success target then fails. A zero target normally succeeds, but explicit requirements such as “at least one die” still apply. Free throws have separate rules; ordinary shot bonuses do not automatically apply.')];
+case 'score':return [t('先選出手方式，再想辦法把這一次的命中機會做大。','Choose a shot, then build the best chance to make it.'),'<div class="rg-shot-grid">'+[['mid','中距離','Mid-range'],['paint','禁區','Paint'],['three','三分','Three-pointer']].map(([id,zh,en])=>{const a=SHOTS[id];return '<section class="rg-shot"><strong>'+s(t(zh,en))+'</strong><div class="rg-points">'+a.points+' <small>'+s(t('分','PTS'))+'</small></div>'+p('能量 '+a.cost+' · '+a.dice+'骰／需'+a.target+'有效','Energy '+a.cost+' · '+a.dice+' dice / '+a.target+' successes')+'</section>';}).join('')+'</div>'+note('以上是未套用能力差、技能與卡片前的基礎值。受壓迫出手花費0能量、1骰需1有效，只有骰面6有效，命中得2分；有能量時也能選它。','These are base values before stats, abilities and cards. A pressured shot costs 0 energy, rolls one die and needs one success on face 6, for 2 points. It is available even when you still have energy.')+'<h4>'+s(t('助攻怎麼算？','What counts as an assist?'))+'</h4>'+flow(['隊友傳球','接球者出手命中','最後傳球者記助攻'],['Teammate passes','Receiver makes field goal','Last passer gets assist'])+p('最後把球傳給出手者的另一位隊友，可以在這次運動戰出手命中時得到助攻。未命中就沒有，這次助攻機會也結束；罰球命中不算助攻。','The last different teammate to pass to the shooter earns an assist when that field-goal attempt is made. A miss earns no assist and ends that assist opportunity. Made free throws do not give assists.')+p('罰球每命中一球得1分。只有特別寫到罰球的效果才會影響罰球；一般「出手」效果預設不包含罰球。','Each made free throw scores one point. Only effects that explicitly include free throws affect them; ordinary “shot” effects exclude free throws by default.')];
+case 'defense':return [t('搶球、守住籃框，或把沒進的球抓回來。','Take the ball, protect the rim, or recover a missed shot.'),table([['動作','Action'],['基礎判定','Base check'],['結果','Outcome']],[[['抄截','Steal'],['能量2；3骰需3有效','2 energy; 3 dice, 3 successes'],['成功：抄截者持球；失敗：對手有2次行動，若第一次就出手，略過一般防守回應。','Success: stealer gets the ball. Failure: opponent gets two actions; a shot on the first bypasses the normal defensive response.']],[['封阻','Block'],['能量2；3骰需3有效','2 energy; 3 dice, 3 successes'],['成功：阻止出手，記封阻與籃板，結算球權。部分出手不能被常規封阻。','Success: stop the shot, record a block and rebound, and settle the possession. Some shots cannot be normally blocked.']],[['籃板','Rebound'],['依畫面骰數與卡片修正','Use displayed dice and card modifiers'],['防守籃板換攻守；進攻籃板繼續進攻，原出手者持球。','A defensive rebound changes sides. An offensive rebound continues the attack with the original shooter holding the ball.']]])+'<h4>'+s(t('封阻失敗，會發生什麼？','What happens after a failed block?'))+'</h4>'+flow(['嘗試封阻但失敗','正常結算出手／技能','依命中結果給罰球'],['Attempted block fails','Resolve shot / ability','Award free throws'])+'<div class="rg-branches">'+box('出手命中 → 加罰1球','Shot made → one extra free throw','先算原本的2分或3分，再獲得1次加罰。封阻失敗不再額外增加出手骰數。','Count the original two or three points, then award one extra free throw. A failed block no longer adds shot dice.')+box('出手未中 → 對應罰球','Shot missed → matching free throws','三分出手獲得3球；中距離、禁區、受壓迫出手獲得2球。','A missed three-pointer gives three free throws. A missed mid-range, paint or pressured shot gives two.')+'</div>'+note('同一次出手若還觸發主場優勢、拳擊手套、技能等罰球效果，只取最高罰球數，不相加。例如三分未進，同時觸發兩種3罰效果，仍然只有3罰。明寫「無懲罰」的額外封阻依該效果處理。','If the same shot also triggers free throws from Home Court Advantage, Boxing Gloves or abilities, use the highest award—not their sum. Two sources of three free throws still give only three. Explicitly penalty-free extra blocks follow their own text.')];
+case 'cards':return [t('戰術是持續運作的計畫，道具是幫你打開局面的工具。','Tactics are your ongoing plan. Items help create the opening.'),'<div class="rg-slots"><div class="rg-slot">'+s(t('▣ 進攻戰術槽 ×1','▣ Offensive tactic slot ×1'))+'</div><div class="rg-slot">'+s(t('▣ 防守戰術槽 ×1','▣ Defensive tactic slot ×1'))+'</div></div>'+p('每隊可同時保留一張進攻戰術和一張防守戰術。打出同類型新戰術會替換舊的；戰術通常跨球權、跨節留場，直到被替換或移除。只有寫明特定時機的效果才在那個時機提供加成。','Each team can keep one offensive and one defensive tactic. Playing a new tactic of the same type replaces the old one. Tactics normally stay across possessions and quarters until replaced or removed. Effects with an explicit timing condition only apply at that timing.')+'<div class="rg-cards">'+box('戰術範例：主攻外線','Tactic example: Perimeter Offense','花3能量，我方場上PG／SG／SF進攻+50。留場效果讓你的外線體系持續得到支援。','Spend 3 energy to give your on-court PG, SG and SF +50 offense. The ongoing effect supports your perimeter lineup.')+box('道具範例：白色護腕','Item example: White Wristband','花2能量，指定一位我方球員，本場永久進攻+50，可以疊加。永久指這場比賽，不會帶到下一場。','Spend 2 energy to give one friendly player permanent +50 offense for this match. It stacks. Permanent match effects do not carry into another match.')+'</div>'+flow(['看使用時機','看目標與能量','打出後查看效果來源'],['Check timing','Check target and energy','Play and inspect effect sources'])+p('「此球權」會在對應球權結束時消失；「下次」是否能跨球權，要看完整卡文。「不可疊加」不能重複累積。護目鏡、透氣球褲、厚實護腕會在每次符合類型的出手，重新抽一個無效骰面改為有效，效果來源會指出骰面。','“This possession” expires with the relevant possession. Whether “next” carries over depends on the full card text. Non-stacking effects do not accumulate. Goggles, Breathable Shorts and Thick Wristband randomly convert an invalid face on every matching shot; effect sources show which face changed.')+note('自由發揮與對手的迷糊仗同時留場時，會使彼此失效；直到其中一張被替換或移除。不要只看卡在不在，也要看它當下有沒有生效。','Free Flow and the opposing Disruption disable each other while both remain in play, until either is replaced or removed. A tactic being present does not always mean it is active.')];
+case 'skills':return [t('認識球員的兩個技能，比只看進攻、防守數字更重要。','Knowing a player’s abilities matters as much as reading their stats.'),'<div class="rg-cards">'+box('主動：由你決定何時用','Active: choose when to use it','要符合進攻／防守時機、持球或對位限制，並支付能量。有些立即出手，有些傳球或強化；灰色按鈕表示目前條件未滿足。','Meet the phase, possession or matchup conditions and pay energy. Some abilities shoot immediately; others pass or buff. A gray button means the current conditions are not met.')+box('被動：符合條件就發動','Passive: triggers when conditions match','不用另外按按鈕，但可能要求特定出手、傳球來源、比分或節次。天生標籤也會影響判定，請一起查看。','No separate button is needed, but the ability may require a certain shot, passer, score or quarter. Innate tags can also affect checks—read them too.')+'</div>'+'<div class="rg-cardface"><strong>'+s(t('D.Cooker（新秀）','D.Cooker (Rookie)'))+'</strong>'+p('進攻175／防守125 · 天生標籤：拙劣封阻','OFF 175 / DEF 125 · Innate tag: Poor Blocking')+p('三分射術：5能量，立即三分出手，這次多1顆骰。','Three-Point Shooting: 5 energy, immediately attempt a three-pointer with one extra die.')+p('手感火燙：命中三分後，本場進攻永久+25。','Hot Hand: after making a three-pointer, gain permanent +25 offense for the match.')+'</div>'+'<h4>'+s(t('效果衝突時，誰優先？','Which effect takes priority?'))+'</h4>'+flow(['球員效果','戰術','道具'],['Player effects','Tactics','Items'])+p('能同時存在的加成仍會一起計算；互相矛盾的效果才看優先序。更換對位時，寫有「優先」的更換效果排在一般更換前。同次出手的罰球數另外遵守「只取最高」規則。','Compatible bonuses still work together. Priority resolves effects that contradict one another: player effects, then tactics, then items. A switch explicitly marked “priority” ranks ahead of ordinary switches. Free-throw awards for one shot separately use the highest-only rule.')+note('判定畫面的「效果來源」可以追查能力值、擲骰數、有效骰面與其他改變從哪裡來。看不懂這次為何多一骰時，先到這裡找答案。','The effect-source display explains changes to stats, dice, valid faces and other conditions. If you wonder why a roll gained a die, check the listed sources first.')];
+case 'deck':return [t('先選五位球員，再準備一套能幫他們發揮的30張牌。','Pick five players, then build a 30-card deck that supports them.'),flow(['5位球員','30張戰術／道具','選擇模式出賽'],['Five players','30 tactics / items','Choose a mode'])+'<div class="rg-cards">'+box('球員編成','Player lineup','PG／SG／SF／PF／C各一位，球員必須能打該位置。同名不同年份或系列的球員不能同隊，例如兩個年份的L.Beams只能選一位。','Fill PG, SG, SF, PF and C with one eligible player each. Different years or series of the same player cannot share a lineup—for example, choose only one L.Beams version.')+box('卡牌張數','Card counts','戰術與道具合計剛好30張；同名卡最多4張，且不能超過你擁有的數量。球員卡另外計算，不占這30張。','Tactics and items must total exactly 30 cards. Each card name is limited to four copies and cannot exceed your collection. Player cards are separate from these 30.')+'</div>'+'<figure class="rg-figure"><div class="rg-tile-grid">'+Array.from({length:30},(_,i)=>'<span class="'+(i<16?'tactic':'item')+'">'+(i<16?'▣':'◆')+'</span>').join('')+'</div><figcaption>'+s(t('配牌示意：16張戰術＋14張道具。這只是範例，不是玩家必須遵守的比例。','Illustration: 16 tactics plus 14 items. This is an example, not a required player ratio.'))+'</figcaption></figure>'+p('可以保存多套牌組，同一批收藏可以放進不同的已存牌組，不會因此消耗卡片。建議先想好主要得分方式，再選能量補給、防守與備用方案。','You can save multiple decks and reuse your collection across saved decks without consuming cards. Start with a scoring plan, then add energy, defense and backup options.')+note('對戰AI另外採用球隊體系牌組：進攻與防守各準備主、副兩套戰術，每套放4張；配套道具每種2～4張。這是AI的編牌政策，不是玩家額外的編成門檻。','AI opponents use system-based decks: a primary and secondary tactic on each side, four copies each, plus supporting items in groups of two to four. This is AI deck policy, not an extra player restriction.')];
+case 'modes':return [t('想快打一場、打完整比賽，還是挑戰完整球隊？','Play a quick game, a full match, or challenge an established team.'),table([['模式','Mode'],['節數','Quarters'],['勝／敗金幣','Win / loss coins']],PLAY_MODES.map(m=>[[m.name[0]+'・'+m.team[0],m.name[1]+' · '+m.team[1]],String(m.quarters),m.win+' / '+m.loss]))+note('速戰速決直接打決勝節；目前涉及節次條件的技能按第四節狀態判定。投降的敗場獎勵會減半，最終內容以模式頁與結算畫面為準。','Quick Match goes straight to the deciding quarter. Abilities with quarter conditions currently use fourth-quarter conditions. Surrender halves the loss reward; check the mode page and result screen for final rewards.')+'<h4>'+s(t('挑戰模式','Challenges'))+'</h4>'+'<div class="rg-cards">'+CHALLENGE_MODES.map(m=>'<section class="rg-card"><span class="rg-status '+(!['league','champions'].includes(m.id)?'soon':'')+'">'+s(t(['league','champions'].includes(m.id)?'已開放':'尚未開放',['league','champions'].includes(m.id)?'Available':'Coming soon'))+'</span><h4>'+s(t(...m.name))+'</h4>'+p(...m.desc)+'</section>').join('')+'</div>'+'<h4>'+s(t('第一次玩？先試新手教學','First time? Try the tutorial'))+'</h4>'+flow(['基本操作','傳球與出手','罰球／籃板','實戰練習'],['Basic controls','Pass and shoot','Free throws / rebounds','Practice match'])+p('主畫面的新手教學會一步步帶你認識操作，再進入實戰。想回來查規則，非比賽頁面點右下角「遊戲規則」；比賽中則點右上角「規則」。','The main-menu tutorial walks you through the controls and into a practice match. Reopen this guide from the bottom-right Game Rules button outside a match, or the top-right Rules button during a match.')];
+}}
+function select(key,focus=false){if(!topics.some(x=>x[0]===key))key='basics';selected=key;const topic=topics.find(x=>x[0]===key),content=root.querySelector('.rg-content');root.querySelectorAll('[role="tab"]').forEach(b=>{const active=b.dataset.topic===key;b.setAttribute('aria-selected',String(active));b.tabIndex=active?0:-1;});const [lead,html]=article(key);content.setAttribute('aria-labelledby','rg-tab-'+key);content.innerHTML='<h3>'+s(t(topic[1],topic[2]))+'</h3><p class="rg-lead">'+s(lead)+'</p>'+html;content.scrollTop=0;if(focus)root.querySelector('#rg-tab-'+key).focus();}
+function paint(){session.lang=language;root.innerHTML='<section id="rulesGuideDialog" role="dialog" aria-modal="true" aria-labelledby="rulesGuideTitle" lang="'+s(language)+'"><header class="rg-head"><div><h2 id="rulesGuideTitle">'+s(t('遊戲規則','Game Rules'))+'</h2><p>'+s(t('選一個主題，從這裡找到答案。','Choose a topic and find your answer.'))+'</p></div><button class="rg-close" type="button" aria-label="'+s(t('關閉遊戲規則','Close game rules'))+'">×</button></header><div class="rg-body"><nav class="rg-nav" role="tablist" aria-orientation="vertical" aria-label="'+s(t('規則主題','Rule topics'))+'">'+topics.map(([id,zh,en,icon])=>'<button type="button" id="rg-tab-'+id+'" class="rg-tab" role="tab" data-topic="'+id+'" aria-controls="rulesGuideContent"><span aria-hidden="true">'+icon+'</span><b>'+s(t(zh,en))+'</b></button>').join('')+'</nav><article id="rulesGuideContent" class="rg-content" role="tabpanel" tabindex="0"></article></div></section>';root.querySelector('.rg-close').onclick=close;root.querySelectorAll('[data-topic]').forEach(b=>b.onclick=()=>select(b.dataset.topic));select(selected);}
+function open(key){if(session){if(key)select(key,true);return;}session={wasModalOpen:modalOpen,focus:document.activeElement,overflow:document.body.style.overflow,lang:language};modalOpen=true;clearTimeout(aiTimer);if(possessionCueToken)clearPossessionCue();closeBattleHover();document.body.style.overflow='hidden';root.hidden=false;document.getElementById('battleRulesToggle').setAttribute('aria-expanded','true');paint();if(key)select(key);syncHandAvailability();root.querySelector('[aria-selected="true"]').focus();}
+function close(){if(!session)return;const previous=session;session=null;root.hidden=true;root.replaceChildren();document.body.style.overflow=previous.overflow;modalOpen=previous.wasModalOpen;document.getElementById('battleRulesToggle').setAttribute('aria-expanded','false');syncHandAvailability();if(previous.focus?.isConnected)previous.focus.focus({preventScroll:true});if(!modalOpen)scheduleAI();}
+launcher.onclick=()=>open();const battle=document.getElementById('battleRulesToggle');battle.onclick=()=>open();battle.setAttribute('aria-haspopup','dialog');battle.setAttribute('aria-controls','rulesGuideDialog');document.getElementById('battleRules').hidden=true;root.onclick=e=>{if(e.target===root)close();};
+window.addEventListener('keydown',e=>{if(!session)return;if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();close();return;}if(['ArrowUp','ArrowDown','Home','End'].includes(e.key)&&e.target.matches('[data-topic]')){e.preventDefault();e.stopImmediatePropagation();let i=topics.findIndex(x=>x[0]===e.target.dataset.topic);i=e.key==='Home'?0:e.key==='End'?topics.length-1:(i+(e.key==='ArrowDown'?1:-1)+topics.length)%topics.length;select(topics[i][0],true);}if(e.key==='Tab'){const items=[...root.querySelectorAll('button:not([tabindex="-1"]),[tabindex="0"]')],first=items[0],last=items[items.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}},true);
+function refresh(){launcher.hidden=!!inGame;const label=t('ⓘ 遊戲規則','ⓘ Game Rules');if(launcher.textContent!==label)launcher.textContent=label;if(session&&session.lang!==language)paint();}
+new MutationObserver(refresh).observe(document.body,{subtree:true,attributes:true,attributeFilter:['class','lang','style']});refresh();globalThis.BTCGRulesGuide={open,close};
+})();
+
+
+</script>
+
+<style id="btcg-mode-dialogs-style">#modeBrowserRoot[hidden]{display:none!important}
+#modeBrowserRoot{position:fixed;inset:0;z-index:10000;background:#040a15c9;backdrop-filter:blur(7px);display:grid;place-items:center;padding:24px}
+#modeBrowserDialog{width:min(1120px,100%);height:min(800px,calc(100dvh - 48px));display:flex;flex-direction:column;overflow:hidden;background:#111a2a;border:1px solid #627088;border-radius:20px;color:#edf2fc;box-shadow:0 24px 90px #000a;font:15px/1.65 system-ui,-apple-system,"Noto Sans TC",sans-serif;text-align:left}
+#modeBrowserDialog *{box-sizing:border-box}
+#modeBrowserDialog button,#modeBrowserDialog select{font:inherit;touch-action:manipulation}
+#modeBrowserDialog .mb-head{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:20px 24px;background:#182337;border-bottom:1px solid #344158;flex:none}
+#modeBrowserDialog h2{margin:0;color:#ffe0a0;font-size:23px;line-height:1.3}
+#modeBrowserDialog .mb-head p{margin:5px 0 0;color:#c1cede;font-size:13px}
+#modeBrowserDialog .mb-close{min-width:42px;min-height:42px;padding:8px 13px;border:1px solid #65738a;border-radius:10px;background:#24334a;color:white;flex:none}
+#modeBrowserDialog .mb-body{display:grid;grid-template-columns:252px minmax(0,1fr);min-height:0;flex:1}
+#modeBrowserDialog .mb-nav{padding:16px 12px;overflow-y:auto;overscroll-behavior:contain;background:#0c1422;border-right:1px solid #344158}
+#modeBrowserDialog [data-mode-tab]{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;margin:0 0 8px;padding:15px 12px;text-align:left;white-space:normal;overflow-wrap:anywhere;border:1px solid transparent;border-radius:11px;background:transparent;color:#bdc9dc;font-size:15px;line-height:1.5}
+#modeBrowserDialog [data-mode-tab] strong{font-weight:650}
+#modeBrowserDialog [data-mode-tab][aria-selected=true]{color:#ffe0a0;border-color:#a98b51;background:#302b24}
+#modeBrowserDialog [data-mode-tab]:disabled{opacity:.5;cursor:not-allowed;display:block;color:#a5afbf;background:transparent}
+#modeBrowserDialog [data-mode-tab] small{display:block;font-size:11px;margin-top:4px}
+#modeBrowserDialog [data-mode-tab] span{color:#e7bc6c}
+#modeBrowserDialog .mb-main{min-width:0;min-height:0;display:flex;flex-direction:column}
+#modeBrowserDialog .mb-content{min-width:0;min-height:0;flex:1;overflow-y:auto;overscroll-behavior:contain;padding:24px 28px 22px;scrollbar-color:#7589a6 #111b2b}
+#modeBrowserDialog .mb-eyebrow{font-size:11px;color:#a4c0df;letter-spacing:1.5px;font-weight:750}
+#modeBrowserDialog h3{margin:6px 0 8px;font-size:25px;line-height:1.4;color:#fff0c5}
+#modeBrowserDialog .mb-intro p{margin:0 0 18px;color:#bdcce2;font-size:14px}
+#modeBrowserDialog .mb-rewards{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:0 0 22px}
+#modeBrowserDialog .mb-rewards section{padding:15px;border:1px solid #497764;background:#18372f;border-radius:12px;min-width:0}
+#modeBrowserDialog .mb-rewards section+section{border-color:#53647d;background:#1e2b40}
+#modeBrowserDialog .mb-rewards span{display:block;font-size:11px;letter-spacing:1px;color:#b5cfc2}
+#modeBrowserDialog .mb-rewards strong{display:block;font-size:18px;color:#f5dfab;margin-top:5px;overflow-wrap:anywhere}
+#modeBrowserDialog .mb-form{display:grid;gap:20px}
+#modeBrowserDialog .mb-field{display:grid;gap:8px;min-width:0}
+#modeBrowserDialog .mb-field label{font-size:15px;font-weight:750;color:#dce8fa}
+#modeBrowserDialog select{width:100%;max-width:100%;min-width:0;min-height:45px;padding:9px 12px;background:#1b2b44;color:#f0f4ff;border:1px solid #687f9e;border-radius:9px;text-overflow:ellipsis}
+#modeBrowserDialog option{background:#1b2b44;color:#fff}
+#modeBrowserDialog .mb-players{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}
+#modeBrowserDialog .mb-players span{min-width:0;padding:8px 6px;border:1px solid #354e6b;border-radius:8px;background:#17283d;overflow-wrap:anywhere}
+#modeBrowserDialog .mb-players small{display:block;color:#eac27d;font-weight:750;font-size:11px}
+#modeBrowserDialog .mb-players b{display:block;font-size:11px;color:#c9d7ed;line-height:1.5;font-weight:500}
+#modeBrowserDialog .mb-players.opponent span{background:#2a2531;border-color:#53465c}
+#modeBrowserDialog #modeDeckStatus{font-size:12px;color:#b8c9df}
+#modeBrowserDialog .mb-random{border:1px dashed #4b6484;border-radius:12px;padding:15px;background:#18273d}
+#modeBrowserDialog .mb-random p{font-size:13px;margin:6px 0 0;color:#b8c9df}
+#modeBrowserDialog .mb-actions{padding:14px 28px 18px;background:#182337;border-top:1px solid #344158;flex:none}
+#modeBrowserDialog .mb-actions[hidden]{display:none!important}
+#modeBrowserDialog .mb-opponent-list{display:grid;gap:16px}
+#modeBrowserDialog .mb-opponent-choice{display:grid;gap:14px;width:100%;min-width:0;padding:18px;border:1px solid #546c8b;border-radius:14px;background:#1a2a42;color:#e8effc;text-align:left;white-space:normal}
+#modeBrowserDialog .mb-opponent-choice:hover{background:#233752;border-color:#e6b760}
+#modeBrowserDialog .mb-opponent-choice.mb-uncleared{background:#482126;border-color:#a65b65}
+#modeBrowserDialog .mb-opponent-choice.mb-uncleared:hover{background:#5c2930;border-color:#f0a1aa}
+#modeBrowserDialog .mb-opponent-choice.mb-cleared{background:#183f30;border-color:#509877}
+#modeBrowserDialog .mb-opponent-choice.mb-cleared:hover{background:#20523d;border-color:#8cdbb6}
+#modeBrowserDialog .mb-opponent-choice .mb-players.opponent>span{background:#080b10;border-color:#55606e}
+#modeBrowserDialog .mb-opponent-choice .mb-players.opponent b{color:#e7edf7}
+#modeBrowserDialog .mb-choice-bottom{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+#modeBrowserDialog .mb-clear-status{margin-left:auto;text-align:right;white-space:nowrap;font-size:13px;color:#ffd2d7}
+#modeBrowserDialog .mb-cleared .mb-clear-status{color:#b7f4d1}
+#modeBrowserDialog .mb-choice-title{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:19px;color:#ffe0a0}
+#modeBrowserDialog .mb-choice-title>span{flex:none}
+#modeBrowserDialog .mb-choice-next{font-size:12px;color:#b8c9df}
+#modeBrowserDialog .mb-opponent-heading{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}
+#modeBrowserDialog #modeChangeOpponent{padding:7px 10px;border:1px solid #7387a2;border-radius:8px;background:#24334a;color:#f5dfab;font-size:12px;min-height:38px;white-space:normal}
+#modeBrowserDialog .mb-opponent-name{margin:0;color:#ffe0a0;font-size:17px}
+#modeBrowserDialog #modeSetupError{font-size:14px;color:#ffc3b2;white-space:normal;overflow-wrap:anywhere;margin:0 0 12px}
+#modeBrowserDialog #modeSetupError:empty{display:none}
+#modeBrowserDialog #modeStartMatch{display:flex;align-items:center;justify-content:space-between;gap:20px;width:100%;min-height:50px;padding:12px 18px;border:1px solid #eac27d;border-radius:11px;background:#e6b760;color:#172238;font-weight:800;font-size:17px}
+#modeBrowserDialog #modeStartMatch:hover{background:#f6ca7b}
+#modeBrowserDialog :focus-visible{outline:3px solid #85c5ff;outline-offset:3px}
+@media(max-width:700px){
+ #modeBrowserRoot{padding:8px}
+ #modeBrowserDialog{height:calc(100dvh - 16px);border-radius:14px;font-size:14px}
+ #modeBrowserDialog .mb-head{padding:14px;gap:8px}
+ #modeBrowserDialog h2{font-size:19px}
+ #modeBrowserDialog .mb-head p{font-size:12px}
+ #modeBrowserDialog .mb-body{grid-template-columns:118px minmax(0,1fr)}
+ #modeBrowserDialog .mb-nav{padding:9px 6px}
+ #modeBrowserDialog [data-mode-tab]{display:block;padding:12px 8px;font-size:13px;margin-bottom:5px}
+ #modeBrowserDialog [data-mode-tab] span{display:none}
+ #modeBrowserDialog .mb-content{padding:18px 12px 24px}
+ #modeBrowserDialog .mb-actions{padding:12px}
+ #modeBrowserDialog .mb-opponent-choice{padding:12px;gap:12px}
+ #modeBrowserDialog .mb-choice-title{font-size:16px}
+ #modeBrowserDialog h3{font-size:20px}
+ #modeBrowserDialog .mb-rewards{grid-template-columns:1fr;gap:8px;margin-bottom:18px}
+ #modeBrowserDialog .mb-rewards section{padding:11px}
+ #modeBrowserDialog .mb-rewards strong{font-size:15px}
+ #modeBrowserDialog .mb-players{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #modeBrowserDialog #modeStartMatch{font-size:15px;gap:6px;padding:12px}
+}
+@media(prefers-reduced-motion:reduce){#modeBrowserRoot{backdrop-filter:none}}
+</style><div id="modeBrowserRoot" hidden></div>
+<script id="btcg-mode-progress">(()=>{
+'use strict';
+const key='btcg-opponent-clears-v1',cleared=new Set(),seen=new WeakSet();
+function normalize(mode,team){if(mode==='league')mode='finals-san-antonio';if(mode==='champions')mode='champion-new-york';if(mode==='finals-san-antonio'||mode==='champion-new-york')return mode;if(['quick-theme','standard-theme'].includes(mode)&&THEME_TEAMS.some(a=>a.id===team))return mode+':'+team;return null;}
+const allowed=new Set(['finals-san-antonio','champion-new-york',...['quick-theme','standard-theme'].flatMap(m=>THEME_TEAMS.map(a=>m+':'+a.id))]);
+function read(){const raw=localStorage.getItem(key);if(!raw)return [];const value=JSON.parse(raw);if(value?.version!==1||!Array.isArray(value.cleared))throw Error('Invalid progress');return value.cleared.filter(x=>allowed.has(x));}
+try{read().forEach(x=>cleared.add(x));}catch(_){/* A known finished match can still restore its own clear. */}
+function save(){try{try{read().forEach(x=>cleared.add(x));}catch(_){}localStorage.setItem(key,JSON.stringify({version:1,cleared:[...cleared].sort()}));return true;}catch(_){storageWarning(tr('通關紀錄尚未儲存，請按重試；目前顯示的通關狀態會暫時保留。','Clear progress has not been saved. Retry; the current clear stays visible for this session.'),save);return false;}}
+function recordWin(state){if(!state?.finished||state.tutorial||state.surrendered||!validBoxScore(state)||state.score[0]<=state.score[1])return false;const id=normalize(state.modeKey,state.themeId);if(!id||seen.has(state))return false;seen.add(state);if(cleared.has(id))return true;cleared.add(id);save();return true;}
+recordWin(lastFinished);
+// Older ledgers identify this fixed-opponent challenge unambiguously. Old
+// themed-match rewards lack team IDs, so they cannot clear every league team.
+let migrated=false;for(const reward of Object.values(economy?.matchRewards||{})){if(reward?.won===true&&reward.mode==='finals-san-antonio'&&!cleared.has(reward.mode)){cleared.add(reward.mode);migrated=true;}}if(migrated)save();
+window.addEventListener('storage',e=>{if(e.key===key)try{read().forEach(x=>cleared.add(x));}catch(_){}});
+globalThis.BTCGClearProgress={has:(mode,team)=>cleared.has(normalize(mode,team)),recordWin};
+})();
+</script>
+<script id="btcg-mode-dialogs">(()=>{
+'use strict';
+const root=document.getElementById('modeBrowserRoot'),t=(zh,en)=>tr(zh,en),s=x=>esc(String(x));
+let session=null;
+const playOrder=['quick-random','quick-theme','standard-random','standard-theme'];
+function entries(){return session.kind==='quick'?playOrder.map(id=>PLAY_MODES.find(m=>m.id===id)):CHALLENGE_MODES.map(m=>({...m,open:['league','champions'].includes(m.id)}));}
+function title(m){return session.kind==='quick'?t(...m.name)+' / '+t(...m.team):t(...m.name);}
+function draft(){return session.drafts[session.selected]||(session.drafts[session.selected]={lineup:starterCollection.activeLineup,deck:starterCollection.activeDeck,step:session.kind==='challenge'||session.selected.endsWith('-theme')?'opponents':'setup',opponent:session.kind==='quick'?THEME_TEAMS[0]?.id:session.selected==='league'?SAN_ANTONIO_FINALS.id:NEW_YORK_CHALLENGE.id});}
+function remember(){if(!session)return;const d=draft();for(const [key,id]of [['lineup','modeOwnLineup'],['deck','modeOwnDeck'],['opponent','modeOpponent']]){const el=root.querySelector('#'+id);if(el)d[key]=key==='opponent'?el.value:Number(el.value);}}
+function opponents(){if(session.kind==='quick')return THEME_TEAMS;return [session.selected==='league'?SAN_ANTONIO_FINALS:NEW_YORK_CHALLENGE];}
+function renderPreview(){const d=draft(),own=starterCollection.lineups[d.lineup]||[],theme=opponents().find(a=>a.id===d.opponent);root.querySelector('#modeLineupPreview').innerHTML=own.map((id,i)=>{const p=playerDefinition(id);return '<span><small>'+s(SLOT_POS[i])+'</small><b>'+s(p.name)+'</b></span>';}).join('');const e=root.querySelector('#modeOpponentPreview');if(e)e.innerHTML=theme?theme.lineup.map((id,i)=>{const p=playerDefinition(id);return '<span><small>'+s(SLOT_POS[i])+'</small><b>'+s(p.name)+'</b></span>';}).join(''):'';const deck=starterCollection.decks[d.deck]||[];root.querySelector('#modeDeckStatus').textContent=deck.length+'/30 · '+t(validOwnedDeck(deck)?'卡組可出戰':'請選擇合法的30張卡組',validOwnedDeck(deck)?'Deck ready':'Select a valid 30-card deck');}
+
+function chooseOpponent(id){const a=opponents().find(a=>a.id===id);if(!a)return;remember();const d=draft();d.opponent=id;d.step='setup';panel();root.querySelector('.mb-content').scrollTop=0;root.querySelector('#modeOwnLineup').focus({preventScroll:true});}
+function backToOpponents(){remember();draft().step='opponents';panel();root.querySelector('.mb-content').scrollTop=0;root.querySelector('[data-pick-opponent="'+draft().opponent+'"]').focus({preventScroll:true});}
+
+function opponentOption(a){const won=globalThis.BTCGClearProgress.has(session.selected,a.id);return '<button type="button" class="mb-opponent-choice '+(won?'mb-cleared':'mb-uncleared')+'" data-pick-opponent="'+s(a.id)+'"><span class="mb-choice-title"><strong>'+s(t(...a.name))+(session.kind==='challenge'?t(session.selected==='league'?'（冠軍賽）':'（總冠軍）',session.selected==='league'?' (Finals)':' (Championship)'):'')+'</strong><span aria-hidden="true">→</span></span><span class="mb-players opponent">'+a.lineup.map((id,i)=>'<span><small>'+s(SLOT_POS[i])+'</small><b>'+s(playerDefinition(id).name)+'</b></span>').join('')+'</span><span class="mb-choice-bottom"><small class="mb-choice-next">'+t('選擇這支隊伍，進入賽前準備','Choose this team and continue to match setup')+'</small><strong class="mb-clear-status">'+t(won?'（已通關）':'（未通關）',won?'(Cleared)':'(Not cleared)')+'</strong></span></button>';}
+
+function opponentPicker(m,d){root.querySelector('.mb-actions').hidden=true;root.querySelector('.mb-content').innerHTML='<header class="mb-intro"><span class="mb-eyebrow">'+t('選擇對手','CHOOSE OPPONENT')+'</span><h3>'+s(title(m))+'</h3><p>'+t('先選擇想挑戰的隊伍，再設定你的出戰陣容與卡組。','Choose the team you want to challenge, then select your lineup and deck.')+'</p></header><div class="mb-opponent-list">'+opponents().map(opponentOption).join('')+'</div>';root.querySelectorAll('[data-pick-opponent]').forEach(b=>b.onclick=()=>chooseOpponent(b.dataset.pickOpponent));}
+
+function panel(){const m=entries().find(m=>m.id===session.selected),d=draft(),challenge=session.kind==='challenge',theme=challenge||m.id.endsWith('-theme');
+if(theme&&d.step!=='setup'){opponentPicker(m,d);return;}root.querySelector('.mb-actions').hidden=false;root.querySelector('#modeSetupError').textContent='';
+const rewards=challenge?(m.id==='league'?[t('冠軍賽系列卡包 ×2','Finals packs ×2'),t('冠軍賽系列卡包 ×1','Finals packs ×1')]:[t('目前無額外獎勵','No extra reward currently'),t('目前無額外獎勵','No extra reward currently')]):[m.win+t(' 金幣',' coins'),m.loss+t(' 金幣',' coins')];
+root.querySelector('.mb-content').innerHTML='<header class="mb-intro"><span class="mb-eyebrow">'+(challenge?'CHALLENGE':'PLAY')+' / '+(challenge||m.quarters===4?'4':'1')+' '+t('節','QUARTERS')+'</span><h3>'+s(title(m))+'</h3><p>'+s(challenge?(m.id==='league'?t('挑戰聖安東尼奧羊蹄的冠軍賽陣容。','Challenge the San Antonio Hooves Finals lineup.'):t('迎戰紐約黑幫的總冠軍陣容。','Face the New York Gangsters championship lineup.')):t(...m.desc))+'</p></header><div class="mb-rewards"><section><span>'+t('勝利獎勵','WIN REWARD')+'</span><strong>'+s(rewards[0])+'</strong></section><section><span>'+t('失敗獎勵','LOSS REWARD')+'</span><strong>'+s(rewards[1])+'</strong></section></div><div class="mb-form"><section class="mb-field"><label for="modeOwnLineup">'+t('隊伍選擇','Your lineup')+'</label><select id="modeOwnLineup">'+starterCollection.lineups.map((ids,i)=>validLineup(ids)?'<option value="'+i+'" '+(i===d.lineup?'selected':'')+'>'+s(setupLabel('lineup',i))+'</option>':'').join('')+'</select><div id="modeLineupPreview" class="mb-players"></div></section><section class="mb-field"><label for="modeOwnDeck">'+t('卡組選擇','Your deck')+'</label><select id="modeOwnDeck">'+starterCollection.decks.map((ids,i)=>'<option value="'+i+'" '+(i===d.deck?'selected':'')+'>'+s(setupLabel('deck',i))+' · '+ids.length+'/30</option>').join('')+'</select><small id="modeDeckStatus"></small></section>'+(theme?'<section class="mb-field mb-selected-opponent"><div class="mb-opponent-heading"><strong>'+t('挑戰隊伍','Opponent')+'</strong><button type="button" id="modeChangeOpponent">'+t('← 返回選擇隊伍','← Change opponent')+'</button></div><p class="mb-opponent-name">'+s(t(...opponents().find(a=>a.id===d.opponent).name))+'</p><div id="modeOpponentPreview" class="mb-players opponent"></div></section>':'<section class="mb-random"><strong>'+t('↻ 隨機組成對手','↻ Random opponent')+'</strong><p>'+t('開始比賽時隨機產生合法陣容，AI卡組會依球員體系搭配。','A valid lineup is generated when you start. The AI deck is built around its players.')+'</p></section>')+'</div>';
+const line=root.querySelector('#modeOwnLineup');if(line.value!=='')d.lineup=Number(line.value);for(const id of ['modeOwnLineup','modeOwnDeck','modeOpponent']){const el=root.querySelector('#'+id);if(el)el.onchange=()=>{remember();renderPreview();root.querySelector('#modeSetupError').textContent='';};}root.querySelector('#modeStartMatch').onclick=start;const back=root.querySelector('#modeChangeOpponent');if(back)back.onclick=backToOpponents;renderPreview();
+}
+function select(id,focus=false){const m=entries().find(x=>x.id===id&&x.open);if(!m)return;remember();const changed=session.selected!==id;session.selected=id;if(changed)draft().step=session.kind==='challenge'||id.endsWith('-theme')?'opponents':'setup';root.querySelector('.mb-content').setAttribute('aria-labelledby','mb-tab-'+id);root.querySelectorAll('[data-mode-tab]').forEach(b=>{const active=b.dataset.modeTab===id;b.setAttribute('aria-selected',String(active));b.tabIndex=active?0:-1;});panel();root.querySelector('.mb-content').scrollTop=0;if(focus)root.querySelector('[data-mode-tab="'+id+'"]').focus();}
+function paint(){session.lang=language;root.innerHTML='<section id="modeBrowserDialog" role="dialog" aria-modal="true" aria-labelledby="modeBrowserTitle" lang="'+s(language)+'"><header class="mb-head"><div><h2 id="modeBrowserTitle">'+t(session.kind==='quick'?'對戰模式':'挑戰模式',session.kind==='quick'?'Play':'Challenges')+'</h2><p>'+t('選好陣容與卡組，準備上場。','Choose your lineup and deck. Get ready to play.')+'</p></div><button type="button" class="mb-close" aria-label="'+t('關閉模式選擇','Close mode selection')+'">×</button></header><div class="mb-body"><nav class="mb-nav" role="tablist" aria-orientation="vertical" aria-label="'+t('模式選擇','Match modes')+'">'+entries().map(m=>'<button type="button" role="tab" data-mode-tab="'+m.id+'" id="mb-tab-'+m.id+'" aria-controls="modeBrowserContent" '+(!m.open?'disabled aria-disabled="true"':'')+'><strong>'+s(title(m))+'</strong>'+(!m.open?'<small>'+t('尚未開放','Coming soon')+'</small>':'<span aria-hidden="true">↗</span>')+'</button>').join('')+'</nav><div class="mb-main"><article id="modeBrowserContent" class="mb-content" role="tabpanel" tabindex="0"></article><div class="mb-actions"><p id="modeSetupError" role="alert"></p><button type="button" id="modeStartMatch">'+t('開始比賽','Start Match')+' <span aria-hidden="true">→</span></button></div></div></div></section>';root.querySelector('.mb-close').onclick=close;root.querySelectorAll('[data-mode-tab]:not([disabled])').forEach(b=>b.onclick=()=>select(b.dataset.modeTab));select(session.selected);}
+function open(kind){if(inGame)return;if(session){remember();session.kind=kind;session.selected=kind==='quick'?playOrder[0]:'league';paint();return;}session={kind,selected:kind==='quick'?playOrder[0]:'league',drafts:{},focus:document.activeElement,overflow:document.body.style.overflow,wasModalOpen:modalOpen,lang:language};modalOpen=true;document.body.style.overflow='hidden';root.hidden=false;paint();root.querySelector('[aria-selected="true"]').focus();}
+function close(){if(!session)return;const previous=session;session=null;root.hidden=true;root.replaceChildren();document.body.style.overflow=previous.overflow;modalOpen=previous.wasModalOpen;if(previous.focus?.isConnected)previous.focus.focus({preventScroll:true});}
+function start(){remember();const d=draft(),m=entries().find(m=>m.id===session.selected&&m.open),lineup=starterCollection.lineups[d.lineup],deck=starterCollection.decks[d.deck],error=root.querySelector('#modeSetupError');if(!m||d.step!=='setup')return;if(!validLineup(lineup)){error.textContent=t('請先編成合法的五人隊伍。','Complete a valid five-player lineup first.');return;}if(!validOwnedDeck(deck)){error.textContent=t('卡組需30張，且同名卡最多4張。請更換卡組或到編成頁調整。','Use a 30-card deck with at most four copies per name. Choose another deck or edit it in your collection.');return;}
+starterCollection.activeLineup=d.lineup;starterCollection.activeDeck=d.deck;if(!saveStarterCollection()){error.textContent=t('設定無法儲存，請稍後再試。','Could not save your selection. Please retry.');return;}
+const challenge=session.kind==='challenge',theme=opponents().find(a=>a.id===d.opponent),isTheme=challenge||m.id.endsWith('-theme');if(isTheme&&!theme){error.textContent=t('請選擇對戰隊伍。','Select an opponent team.');return;}
+const opposing=isTheme?theme.lineup.slice():randomOpponentLineup(),opponentDeck=challenge?themedOpponentDeck({lineup:opposing,tactics:[['man-to-man',4],['focus-defense',4],['delay-offense',2],['closeout-defense',2]]}):isTheme?themedOpponentDeck(theme):randomOpponentDeck(Math.random,opposing),labels=isTheme?theme.name:m.name,config=challenge?{id:theme.id,quarters:4}:{...m,themeId:isTheme?theme.id:null},ownDeck=deck.slice(),ownLineup=lineup.slice(),deckName=setupLabel('deck',d.deck);close();startMatch('computer',{opponentLabels:labels,opponentDeckName:t(...labels),playerDeckName:deckName},false,[ownDeck,opponentDeck],[ownLineup,opposing],false,config);
+}
+root.onclick=e=>{if(e.target===root)close();};window.addEventListener('keydown',e=>{if(!session||!document.getElementById('rulesGuideRoot').hidden)return;if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();close();return;}if(['ArrowUp','ArrowDown','Home','End'].includes(e.key)&&e.target.matches('[data-mode-tab]')){e.preventDefault();const list=entries().filter(m=>m.open);let i=list.findIndex(m=>m.id===e.target.dataset.modeTab);i=e.key==='Home'?0:e.key==='End'?list.length-1:(i+(e.key==='ArrowDown'?1:-1)+list.length)%list.length;select(list[i].id,true);}if(e.key==='Tab'){const items=[...root.querySelectorAll('button:not([disabled]):not([tabindex="-1"]),select,[tabindex="0"]')].filter(el=>el.getClientRects().length),first=items[0],last=items.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}},true);
+new MutationObserver(()=>{if(session&&session.lang!==language){remember();paint();}}).observe(document.body,{attributes:true,subtree:true,attributeFilter:['class','lang','style']});
+globalThis.BTCGModeBrowser={open,close};
+})();
+</script>
 </body></html>
